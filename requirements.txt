@@ -1,0 +1,7 @@
+llama_index
+langchain
+transformers
+accelerate
+streamlit
+sentence_transformers
+chromadb
