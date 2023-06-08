@@ -14,7 +14,7 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.llms import AzureOpenAI
 from langchain.vectorstores import Chroma
 
-import ingest
+from ingest import Ingestion
 from constants import CHROMA_SETTINGS, PERSIST_DIRECTORY
 
 logger = logging.getLogger(__name__)
@@ -94,17 +94,17 @@ class AzureOpenAiChatBot:
 
     def ingest_documents(self):
         if self.load_data:
-            ingest.main()
+            Ingestion(source_path=self.source_path)
         else:
             if os.path.exists(PERSIST_DIRECTORY):
                 if os.listdir(PERSIST_DIRECTORY):
                     logger.info(f"Ingestion skipped!")
                 else:
                     logger.info("PERSIST_DIRECTORY is empty.")
-                    ingest.main()
+                    Ingestion(source_path=self.source_path)
             else:
                 logger.info("PERSIST_DIRECTORY does not exist.")
-                ingest.main()
+                Ingestion(source_path=self.source_path)
 
     def initialize_model(self):
         logger.info("Initializing Model ...")
@@ -201,7 +201,13 @@ class AzureOpenAiChatBot:
 
 if __name__ == "__main__":
     # build a ChatBot object
+
+    # Context only chat
+    # bot = AzureOpenAiChatBot()
+
+    # Open chat
     bot = AzureOpenAiChatBot(open_chat=True)
+    
     # start chatting
     while True:
         # receive user input

@@ -86,100 +86,128 @@ LOADER_MAPPING = {
     # Add more mappings for other file extensions and loaders as needed
 }
 
+class Ingestion:
+    # initialize
+    def __init__(
+        self,
+        offline: bool = False,
+        source_path: str = None,
+        gpu: bool = False,
+    ):
+        """
+        Initialize AzureOpenAiChatBot object
 
-def load_single_document(file_path: str) -> List[Document]:
-    ext = "." + file_path.rsplit(".", 1)[-1]
-    if ext in LOADER_MAPPING:
-        loader_class, loader_args = LOADER_MAPPING[ext]
-        loader = loader_class(file_path, **loader_args)
-        return loader.load()
+        Parameters:
+        - source_path: optional
+        - open_chat: set True to allow answer outside of the context
+        - load_data: set True if you want to load new / additional data. default skipping ingest data.
+        - show_stream: show_stream
+        - show_source: set True will show source of the completion
+        """
+        self.offline = offline
+        self.source_path = source_path
+        self.gpu = gpu
+        # greet while starting
+        if self.source_path is None or len(self.source_path) == 0:
+            self.source_path = source_directory
+        self.main()
 
-    raise ValueError(f"Unsupported file extension '{ext}'")
+    def load_single_document(self, file_path: str) -> List[Document]:
+        ext = "." + file_path.rsplit(".", 1)[-1]
+        if ext in LOADER_MAPPING:
+            loader_class, loader_args = LOADER_MAPPING[ext]
+            loader = loader_class(file_path, **loader_args)
+            return loader.load()
 
-def load_documents(source_dir: str, ignored_files: List[str] = []) -> List[Document]:
-    """
-    Loads all documents from the source documents directory, ignoring specified files
-    """
-    all_files = []
-    for ext in LOADER_MAPPING:
-        all_files.extend(
-            glob.glob(os.path.join(source_dir, f"**/*{ext}"), recursive=True)
-        )
-    filtered_files = [file_path for file_path in all_files if file_path not in ignored_files]
+        raise ValueError(f"Unsupported file extension '{ext}'")
 
-    with Pool(processes=os.cpu_count()) as pool:
-        results = []
-        with tqdm(total=len(filtered_files), desc='Loading new documents', ncols=80) as pbar:
-            for i, docs in enumerate(pool.imap_unordered(load_single_document, filtered_files)):
-                results.extend(docs)
-                pbar.update()
+    def load_documents(self, source_dir: str, ignored_files: List[str] = []) -> List[Document]:
+        """
+        Loads all documents from the source documents directory, ignoring specified files
+        """
+        all_files = []
+        for ext in LOADER_MAPPING:
+            all_files.extend(
+                glob.glob(os.path.join(source_dir, f"**/*{ext}"), recursive=True)
+            )
+        filtered_files = [file_path for file_path in all_files if file_path not in ignored_files]
 
-    return results
+        with Pool(processes=os.cpu_count()) as pool:
+            results = []
+            with tqdm(total=len(filtered_files), desc='Loading new documents', ncols=80) as pbar:
+                for i, docs in enumerate(pool.imap_unordered(self.load_single_document, filtered_files)):
+                    results.extend(docs)
+                    pbar.update()
 
-def process_documents(ignored_files: List[str] = []) -> List[Document]:
-    """
-    Load documents and split in chunks
-    """
-    print(f"Loading documents from {source_directory}")
-    documents = load_documents(source_directory, ignored_files)
-    if not documents:
-        print("No new documents to load")
-        return None
-    print(f"Loaded {len(documents)} new documents from {source_directory}")
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    texts = text_splitter.split_documents(documents)
-    print(f"Split into {len(texts)} chunks of text (max. {chunk_size} tokens each)")
-    return documents
+        return results
 
-def does_vectorstore_exist(persist_directory: str) -> bool:
-    """
-    Checks if vectorstore exists
-    """
-    if os.path.exists(os.path.join(persist_directory, 'index')):
-        if os.path.exists(os.path.join(persist_directory, 'chroma-collections.parquet')) and os.path.exists(os.path.join(persist_directory, 'chroma-embeddings.parquet')):
-            list_index_files = glob.glob(os.path.join(persist_directory, 'index/*.bin'))
-            list_index_files += glob.glob(os.path.join(persist_directory, 'index/*.pkl'))
-            # At least 3 documents are needed in a working vectorstore
-            if len(list_index_files) > 3:
-                return True
-    return False
+    def process_documents(self, ignored_files: List[str] = []) -> List[Document]:
+        """
+        Load documents and split in chunks
+        """
+        print(f"Loading documents from {self.source_path}")
+        documents = self.load_documents(self.source_path, ignored_files)
+        if not documents:
+            print("No new documents to load")
+            return None
+        print(f"Loaded {len(documents)} new documents from {self.source_path}")
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        texts = text_splitter.split_documents(documents)
+        print(f"Split into {len(texts)} chunks of text (max. {chunk_size} tokens each)")
+        return documents
 
-def main(offline: bool = False):
-    print(f"Offline Embedding: {offline}")
-    # Create embeddings
-    if offline:
-        embeddings = HuggingFaceEmbeddings()
-    else:
-        embeddings = OpenAIEmbeddings(
-            model="text-embedding-ada-002",
-            deployment="text-embedding-ada-002",
-            openai_api_key= openai.api_key,
-            openai_api_base=openai.api_base,
-            openai_api_type=openai.api_type,
-            openai_api_version=openai.api_version,
-            chunk_size=1
-        )
+    def does_vectorstore_exist(self, persist_directory: str) -> bool:
+        """
+        Checks if vectorstore exists
+        """
+        if os.path.exists(os.path.join(persist_directory, 'index')):
+            if os.path.exists(os.path.join(persist_directory, 'chroma-collections.parquet')) and os.path.exists(os.path.join(persist_directory, 'chroma-embeddings.parquet')):
+                list_index_files = glob.glob(os.path.join(persist_directory, 'index/*.bin'))
+                list_index_files += glob.glob(os.path.join(persist_directory, 'index/*.pkl'))
+                # At least 3 documents are needed in a working vectorstore
+                if len(list_index_files) > 3:
+                    return True
+        return False
 
-    if does_vectorstore_exist(persist_directory):
-        # Update and store locally vectorstore
-        print(f"Appending to existing vectorstore at {persist_directory}")
-        db = Chroma(persist_directory=persist_directory, embedding_function=embeddings, client_settings=CHROMA_SETTINGS)
-        collection = db.get()
-        texts = process_documents([metadata['source'] for metadata in collection['metadatas']])
-        if texts:
-            print(f"Creating embeddings. May take some minutes...")
-            db.add_documents(texts)
-    else:
-        # Create and store locally vectorstore
-        print("Creating new vectorstore")
-        texts = process_documents()
-        if texts:
-            print(f"Creating embeddings. May take some minutes...")
-            db = Chroma.from_documents(texts, embeddings, persist_directory=persist_directory, client_settings=CHROMA_SETTINGS)
-    db.persist()
-    db = None
+    def main(self):
+        print(f"Offline Embedding: {self.offline}")
+        # Create embeddings
+        if self.offline:
+            if not self.gpu:
+                print("Disable CUDA")
+                os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+            embeddings = HuggingFaceEmbeddings()
+        else:
+            embeddings = OpenAIEmbeddings(
+                model="text-embedding-ada-002",
+                deployment="text-embedding-ada-002",
+                openai_api_key= openai.api_key,
+                openai_api_base=openai.api_base,
+                openai_api_type=openai.api_type,
+                openai_api_version=openai.api_version,
+                chunk_size=1
+            )
 
-    print(f"Ingestion complete!")
+        if self.does_vectorstore_exist(persist_directory):
+            # Update and store locally vectorstore
+            print(f"Appending to existing vectorstore at {persist_directory}")
+            db = Chroma(persist_directory=persist_directory, embedding_function=embeddings, client_settings=CHROMA_SETTINGS)
+            collection = db.get()
+            texts = self.process_documents([metadata['source'] for metadata in collection['metadatas']])
+            if texts:
+                print(f"Creating embeddings. May take some minutes...")
+                db.add_documents(texts)
+        else:
+            # Create and store locally vectorstore
+            print("Creating new vectorstore")
+            texts = self.process_documents()
+            if texts:
+                print(f"Creating embeddings. May take some minutes...")
+                db = Chroma.from_documents(texts, embeddings, persist_directory=persist_directory, client_settings=CHROMA_SETTINGS)
+        db.persist()
+        db = None
+
+        print(f"Ingestion complete!")
 
 if __name__ == "__main__":
-    main(offline=True)
+    ingest = Ingestion(offline=True)
