@@ -139,7 +139,7 @@ class Ingestion:
                     loader = loader_class(file_path, **loader_args)
                     return loader.load()
                 except:
-                    print(f"File failed to load: '{file_path}'")
+                    print(f"\nFile failed to load: '{file_path}'")
                     return []
         raise ValueError(f"Unsupported file extension '{ext}'")
 
@@ -187,7 +187,7 @@ class Ingestion:
                 f.close
                 return texts
         except:
-            print(f"File failed to load: '{file_path}', File Types: '{ext}'")
+            print(f"\nFile failed to load: '{file_path}', File Types: '{ext}'")
             return []
 
     def process_code(self) -> List[Document]:
@@ -316,7 +316,6 @@ class Ingestion:
             )
             collection = db.get()
             texts = self.process_code()
-            # texts.append(self.process_code())
             if texts:
                 print(f"Code: Creating embeddings. May take some minutes...")
                 db.add_documents(texts)
@@ -337,5 +336,5 @@ class Ingestion:
         print(f"Code: Ingestion complete!")
 
 if __name__ == "__main__":
-    base_path = None
+    base_path = "C:\\Users\\victo\\workspaces\\OpenAI"
     ingest = Ingestion(offline=True, gpu=True, source_path=base_path)

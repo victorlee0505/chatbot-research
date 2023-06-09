@@ -9,7 +9,7 @@ from code_text_splitter import LanguageExtension
 base_path = "./source_documents"
 
 # Specify the accepted file extensions in a list
-extensions = [e.value for e in LanguageExtension]
+EXTENSIONS = [e.value for e in LanguageExtension]
 
 class GitRepoUtils:
 
@@ -53,7 +53,7 @@ class GitRepoUtils:
 
     def find_files(self):
         directories = {}
-        for ext in extensions:
+        for ext in EXTENSIONS:
             for file_path in glob.glob(f"{self.source_path}/**/*.{ext}", recursive=True):
                 directory = os.path.dirname(file_path)  # get the parent directory
                 if directory not in directories:
@@ -68,7 +68,7 @@ class GitRepoUtils:
 
     def find_all_files(self):
         all_file_path = []
-        for ext in extensions:
+        for ext in EXTENSIONS:
             for file_path in glob.glob(f"{self.source_path}/**/*.{ext}", recursive=True):
                 all_file_path.append(file_path)
         return all_file_path
