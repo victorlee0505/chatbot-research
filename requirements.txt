@@ -1,5 +1,7 @@
 llama_index
 langchain
+lxml
+unstructured
 transformers
 accelerate
 streamlit
