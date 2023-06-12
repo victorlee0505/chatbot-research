@@ -24,7 +24,7 @@ from transformers import (
     pipeline,
 )
 
-from constants import CHROMA_SETTINGS, PERSIST_DIRECTORY
+from constants import CHROMA_SETTINGS_HF, PERSIST_DIRECTORY_HF
 from ingest import Ingestion
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ handler.setLevel(logging.INFO)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-persist_directory = PERSIST_DIRECTORY
+persist_directory = PERSIST_DIRECTORY_HF
 target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 4))
 
 # max LLM token input size
@@ -119,8 +119,8 @@ class HuggingfaceChatBot:
         if self.load_data:
             Ingestion(offline=offline)
         else:
-            if os.path.exists(PERSIST_DIRECTORY):
-                if os.listdir(PERSIST_DIRECTORY):
+            if os.path.exists(persist_directory):
+                if os.listdir(persist_directory):
                     logger.info(f"Ingestion skipped!")
                 else:
                     logger.info("PERSIST_DIRECTORY is empty.")
@@ -135,7 +135,7 @@ class HuggingfaceChatBot:
         db = Chroma(
             persist_directory=persist_directory,
             embedding_function=self.embedding_llm,
-            client_settings=CHROMA_SETTINGS,
+            client_settings=CHROMA_SETTINGS_HF,
         )
         retriever = db.as_retriever(search_kwargs={"k": target_source_chunks})
 

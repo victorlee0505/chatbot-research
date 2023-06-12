@@ -15,7 +15,7 @@ from langchain.llms import AzureOpenAI
 from langchain.vectorstores import Chroma
 
 from ingest import Ingestion
-from constants import CHROMA_SETTINGS, PERSIST_DIRECTORY
+from constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -25,7 +25,7 @@ handler = logging.StreamHandler(stream=sys.stdout)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-persist_directory = PERSIST_DIRECTORY
+persist_directory = PERSIST_DIRECTORY_AZURE
 target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 4))
 
 openai.api_type = "azure"
@@ -96,8 +96,8 @@ class AzureOpenAiChatBot:
         if self.load_data:
             Ingestion(source_path=self.source_path)
         else:
-            if os.path.exists(PERSIST_DIRECTORY):
-                if os.listdir(PERSIST_DIRECTORY):
+            if os.path.exists(persist_directory):
+                if os.listdir(persist_directory):
                     logger.info(f"Ingestion skipped!")
                 else:
                     logger.info("PERSIST_DIRECTORY is empty.")
@@ -119,7 +119,7 @@ class AzureOpenAiChatBot:
         db = Chroma(
             persist_directory=persist_directory,
             embedding_function=self.embedding_llm,
-            client_settings=CHROMA_SETTINGS,
+            client_settings=CHROMA_SETTINGS_AZURE,
         )
         retriever = db.as_retriever(search_kwargs={"k": target_source_chunks})
         # activate/deactivate the streaming StdOut callback for LLMs

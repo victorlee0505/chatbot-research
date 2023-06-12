@@ -7,6 +7,7 @@ from typing import List
 
 import openai
 import pandas as pd
+from chromadb.config import Settings
 from langchain.docstore.document import Document
 from langchain.document_loaders import (
     CSVLoader,
@@ -28,7 +29,12 @@ from langchain.vectorstores import Chroma
 from tqdm import tqdm
 
 import code_text_splitter
-from constants import CHROMA_SETTINGS
+from constants import (
+    CHROMA_SETTINGS_AZURE,
+    CHROMA_SETTINGS_HF,
+    PERSIST_DIRECTORY_AZURE,
+    PERSIST_DIRECTORY_HF,
+)
 from git_repo_utils import EXTENSIONS, GitRepoUtils
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -40,10 +46,14 @@ openai.api_version = "2023-05-15"
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Load environment variables
-persist_directory = "./storage"
+persist_directory_azure = PERSIST_DIRECTORY_AZURE
+persist_directory_hf = PERSIST_DIRECTORY_HF
+chroma_setting_azure = CHROMA_SETTINGS_AZURE
+chroma_setting_hf = CHROMA_SETTINGS_HF
 source_directory = "./source_documents"
 chunk_size = 500
 chunk_overlap = 50
+
 
 # Custom document loaders
 class MyElmLoader(UnstructuredEmailLoader):
@@ -94,20 +104,24 @@ class Ingestion:
         self,
         offline: bool = False,
         source_path: str = None,
+        chroma_setting: Settings = None,
+        persist_directory: str = None,
         gpu: bool = False,
     ):
         """
-        Initialize AzureOpenAiChatBot object
+        Initialize Ingestion object
 
         Parameters:
-        - source_path: optional
-        - open_chat: set True to allow answer outside of the context
-        - load_data: set True if you want to load new / additional data. default skipping ingest data.
-        - show_stream: show_stream
-        - show_source: set True will show source of the completion
+        - offline: embedding engine: offline= huggingface , online = azure. they are not cross compatible.
+        - source_path: default is "./source_documents"
+        - chroma_setting: vector storage setting, online and offline has different setting (recommend keep it default)
+        - persist_directory: vector storage location, online and offline has different storage (recommend keep it default)
+        - gpu: enable CUDA if supported. no effect to online embedding
         """
         self.offline = offline
         self.source_path = source_path
+        self.chroma_setting = chroma_setting
+        self.persist_directory = persist_directory
         self.gpu = gpu
 
         if self.source_path is None or len(self.source_path) == 0:
@@ -260,6 +274,8 @@ class Ingestion:
                 print("Disable CUDA")
                 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
             embeddings = HuggingFaceEmbeddings()
+            self.chroma_setting = CHROMA_SETTINGS_HF
+            self.persist_directory = persist_directory_hf
         else:
             embeddings = OpenAIEmbeddings(
                 model="text-embedding-ada-002",
@@ -270,16 +286,18 @@ class Ingestion:
                 openai_api_version=openai.api_version,
                 chunk_size=1,
             )
+            self.chroma_setting = CHROMA_SETTINGS_AZURE
+            self.persist_directory = persist_directory_azure
 
-        if self.does_vectorstore_exist(persist_directory):
+        if self.does_vectorstore_exist(self.persist_directory):
             # Update and store locally vectorstore
             print(
-                f"Documents: Appending to existing vectorstore at {persist_directory}"
+                f"Documents: Appending to existing vectorstore at {self.persist_directory}"
             )
             db = Chroma(
-                persist_directory=persist_directory,
+                persist_directory=self.persist_directory,
                 embedding_function=embeddings,
-                client_settings=CHROMA_SETTINGS,
+                client_settings=self.chroma_setting,
             )
             collection = db.get()
             texts = self.process_documents(
@@ -299,20 +317,22 @@ class Ingestion:
                 db = Chroma.from_documents(
                     texts,
                     embeddings,
-                    persist_directory=persist_directory,
-                    client_settings=CHROMA_SETTINGS,
+                    persist_directory=self.persist_directory,
+                    client_settings=self.chroma_setting,
                 )
         db.persist()
         db = None
         print(f"Documents: Ingestion complete!")
 
-        if self.does_vectorstore_exist(persist_directory):
+        if self.does_vectorstore_exist(self.persist_directory):
             # Update and store locally vectorstore
-            print(f"Code: Appending to existing vectorstore at {persist_directory}")
+            print(
+                f"Code: Appending to existing vectorstore at {self.persist_directory}"
+            )
             db = Chroma(
-                persist_directory=persist_directory,
+                persist_directory=self.persist_directory,
                 embedding_function=embeddings,
-                client_settings=CHROMA_SETTINGS,
+                client_settings=self.chroma_setting,
             )
             collection = db.get()
             texts = self.process_code()
@@ -328,12 +348,13 @@ class Ingestion:
                 db = Chroma.from_documents(
                     texts,
                     embeddings,
-                    persist_directory=persist_directory,
-                    client_settings=CHROMA_SETTINGS,
+                    persist_directory=self.persist_directory,
+                    client_settings=self.chroma_setting,
                 )
         db.persist()
         db = None
         print(f"Code: Ingestion complete!")
+
 
 if __name__ == "__main__":
     base_path = "C:\\Users\\victo\\workspaces\\OpenAI"
