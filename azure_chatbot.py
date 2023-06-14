@@ -200,6 +200,7 @@ class AzureOpenAiChatBot:
             answer = self.random_response()
         # print bot response
         self.chat_history.append((self.inputs, answer))
+        self.chat_history[:] =  self.chat_history[-10:]
         # logger.debug(self.chat_history)
         print(f"<bot>: {answer}")
         if self.show_source:

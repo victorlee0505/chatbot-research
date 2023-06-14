@@ -242,6 +242,7 @@ class RedpajamaChatBot:
             answer = answer.replace("\n<human>:", "")
         # print bot response
         self.chat_history.append((f"<human>: {self.inputs}", f"<bot>: {answer}"))
+        self.chat_history[:] =  self.chat_history[-10:]
         # logger.info(self.chat_history)
         print(f"<bot>: {answer}")
         if self.show_source:
