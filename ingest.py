@@ -40,9 +40,6 @@ from git_repo_utils import EXTENSIONS, GitRepoUtils
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
-openai.api_type = "azure"
-openai.api_base = os.getenv("OPENAI_AZURE_BASE_URL")
-openai.api_version = "2023-05-15"
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Load environment variables
@@ -103,6 +100,7 @@ class Ingestion:
     def __init__(
         self,
         offline: bool = False,
+        openai: bool = False,
         source_path: str = None,
         chroma_setting: Settings = None,
         persist_directory: str = None,
@@ -119,6 +117,7 @@ class Ingestion:
         - gpu: enable CUDA if supported. no effect to online embedding
         """
         self.offline = offline
+        self.openai = openai
         self.source_path = source_path
         self.chroma_setting = chroma_setting
         self.persist_directory = persist_directory
@@ -276,15 +275,26 @@ class Ingestion:
             self.chroma_setting = CHROMA_SETTINGS_HF
             self.persist_directory = persist_directory_hf
         else:
-            embeddings = OpenAIEmbeddings(
-                model="text-embedding-ada-002",
-                deployment="text-embedding-ada-002",
-                openai_api_key=openai.api_key,
-                openai_api_base=openai.api_base,
-                openai_api_type=openai.api_type,
-                openai_api_version=openai.api_version,
-                chunk_size=1,
-            )
+            if not self.openai:
+                openai.api_type = "azure"
+                openai.api_base = os.getenv("OPENAI_AZURE_BASE_URL")
+                openai.api_version = "2023-05-15"
+                print("Azure Embedding")
+                embeddings = OpenAIEmbeddings(
+                    model="text-embedding-ada-002",
+                    deployment="text-embedding-ada-002",
+                    openai_api_key=openai.api_key,
+                    openai_api_base=openai.api_base,
+                    openai_api_type=openai.api_type,
+                    openai_api_version=openai.api_version,
+                    chunk_size=1,
+                )
+            else:
+                print("OpenAI Embedding")
+                embeddings = OpenAIEmbeddings(
+                    model="text-embedding-ada-002",
+                    openai_api_key=openai.api_key,
+                )
             self.chroma_setting = CHROMA_SETTINGS_AZURE
             self.persist_directory = persist_directory_azure
 
@@ -361,7 +371,11 @@ if __name__ == "__main__":
     base_path = "C:\\path\\to\\your\\data"
 
     # Offline
-    ingest = Ingestion(offline=True, gpu=True, source_path=base_path)
+    # ingest = Ingestion(offline=True, gpu=True, source_path=base_path)
 
     # Online
     # ingest = Ingestion(offline=False)
+
+    # open ai
+    ingest = Ingestion(offline=False, openai=True)
+
