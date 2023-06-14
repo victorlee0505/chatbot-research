@@ -11,12 +11,6 @@ from hf_redpajama_chatbot_base import RedpajamaChatBotBase
 from persist import load_widget_state, persist
 from ui_constants import CHAT_ONLY, CLOSED, KILL_MESSAGE, OPEN, REDPAJAMA_CHAT_3B, REDPAJAMA_CHAT_7B
 
-openai.api_type = "azure"
-openai.api_base = os.getenv("OPENAI_AZURE_BASE_URL")  # your endpoint should look like the following https://YOUR_RESOURCE_NAME.openai.azure.com/
-openai.api_version = "2023-05-15"  # this may change in the future
-openai.api_key = os.getenv("OPENAI_API_KEY")
-deployment_name = os.getenv("OPENAI_DEPLOYMENT_NAME")  # This will correspond to the custom name you chose for your deployment when you deployed a model.
-
 st.set_page_config(
         page_title="ChatBot-research",
         page_icon="👋",
