@@ -11,6 +11,7 @@ from langchain.chat_models import AzureChatOpenAI
 from langchain.memory import ConversationBufferMemory
 
 logger = logging.getLogger(__name__)
+logger.propagate = False
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 handler = logging.StreamHandler(stream=sys.stdout)
@@ -31,9 +32,11 @@ class AzureOpenAiChatBotBase:
     def __init__(
         self,
         show_stream: bool = False,
+        gui_mode: bool = False,
     ):
         self.llm = None
         self.show_stream = show_stream
+        self.gui_mode = gui_mode
         self.qa = None
         self.chat_history = []
         self.inputs = None
@@ -75,22 +78,32 @@ class AzureOpenAiChatBotBase:
         memory = ConversationBufferMemory(ai_prefix="<bot>: ", human_prefix="<human>: ")
         self.qa = ConversationChain(llm=self.llm, memory=memory, verbose=False)
 
-    def user_input(self):
+    def user_input(self, prompt: str = None):
         # receive input from user
-        text = input("<human>: ")
+        if prompt:
+            text = prompt
+        else:
+            text = input("<human>: ")
+        
         logger.debug(text)
         # end conversation if user wishes so
-        if text.lower().strip() in ["bye", "quit", "exit"]:
+        if text.lower().strip() in ["bye", "quit", "exit"] and not self.gui_mode:
             # turn flag on
             self.end_chat = True
             # a closing comment
             logger.info("<bot>: See you soon! Bye!")
             time.sleep(1)
             logger.info("\nQuitting ChatBot ...")
+            self.inputs = text
         else:
             self.inputs = text
 
-    def bot_response(self):
+    def bot_response(self) -> str:
+        if self.inputs.lower().strip() in ["bye", "quit", "exit"] and self.gui_mode:
+            # a closing comment
+            answer = "<bot>: See you soon! Bye!"
+            print(f"<bot>: {answer}")
+            return answer
         answer = self.qa.run(self.inputs)
         # in case, bot fails to answer
         if answer == "":
@@ -99,6 +112,7 @@ class AzureOpenAiChatBotBase:
         self.chat_history.append((self.inputs, answer))
         # logger.debug(self.chat_history)
         print(f"<bot>: {answer}")
+        return answer
 
     # in case there is no response from model
     def random_response(self):

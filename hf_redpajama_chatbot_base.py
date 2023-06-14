@@ -19,6 +19,7 @@ from transformers import (
 )
 
 logger = logging.getLogger(__name__)
+logger.propagate = False
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 handler = logging.StreamHandler(stream=sys.stdout)
@@ -54,19 +55,25 @@ stop_words = ["Question:", "<human>:", "<bot>:"]
 
 # A ChatBot class
 # Build a ChatBot class with all necessary modules to make a complete conversation
-class HuggingfaceChatBot:
+class RedpajamaChatBotBase:
     # initialize
     def __init__(
         self,
+        model: str = None,
         gpu: bool = False,
+        gui_mode: bool = False,
     ):
-        self.gpu = gpu
+        self.model = model
+        self.gpu = gpu 
+        self.gui_mode = gui_mode
         self.llm = None
         self.qa = None
         self.chat_history = []
         self.inputs = None
         self.end_chat = False
         # greet while starting
+        if self.model is None or len(self.model) == 0:
+            self.model = checkpoint
         self.welcome()
 
     def welcome(self):
@@ -141,22 +148,32 @@ class HuggingfaceChatBot:
     def promptWrapper(self, text: str):
         return "<human>: " + text + "\n<bot>: "
 
-    def user_input(self):
+    def user_input(self, prompt: str = None):
         # receive input from user
-        text = input("<human>: ")
+        if prompt:
+            text = prompt
+        else:
+            text = input("<human>: ")
+
         logger.debug(text)
         # end conversation if user wishes so
-        if text.lower().strip() in ["bye", "quit", "exit"]:
+        if text.lower().strip() in ["bye", "quit", "exit"] and not self.gui_mode:
             # turn flag on
             self.end_chat = True
             # a closing comment
             logger.info("<bot>: See you soon! Bye!")
             time.sleep(1)
             logger.info("\nQuitting ChatBot ...")
+            self.inputs = text
         else:
             self.inputs = text
 
-    def bot_response(self):
+    def bot_response(self) -> str:
+        if self.inputs.lower().strip() in ["bye", "quit", "exit"] and self.gui_mode:
+            # a closing comment
+            answer = "<bot>: See you soon! Bye!"
+            print(f"<bot>: {answer}")
+            return answer
         answer = self.qa.run(self.promptWrapper(self.inputs))
         # in case, bot fails to answer
         if answer == "":
@@ -167,6 +184,7 @@ class HuggingfaceChatBot:
         self.chat_history.append((f"<human>: {self.inputs}", f"<bot>: {answer}"))
         # logger.info(self.chat_history)
         print(f"<bot>: {answer}")
+        return answer
 
     # in case there is no response from model
     def random_response(self):
@@ -175,7 +193,7 @@ class HuggingfaceChatBot:
 
 if __name__ == "__main__":
     # build a ChatBot object
-    bot = HuggingfaceChatBot()
+    bot = RedpajamaChatBotBase()
     # start chatting
     while True:
         # receive user input

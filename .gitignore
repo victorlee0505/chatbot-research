@@ -1,4 +1,5 @@
 .vscode/
 __pycache__/
 offload/
-storage/
+storage_azure/
+storage_hf/

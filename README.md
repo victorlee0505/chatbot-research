@@ -5,6 +5,10 @@ I will be using [RedPajama-INCITE-Chat-3B-v1](https://huggingface.co/togethercom
 
 Please check out their website to understand the hardware requirement.
 
+All models from HuggingFace will be downloaded first time you run it and stored in C:\Users\[YOUR_USER_NAME]\.cache
+
+If you delete model in .cache (ex. save disk space), model will be re-download next time you start up the chatbot.
+
 
 # Environment Setup
 In order to set your environment up to run the code here, first install all requirements:
@@ -45,6 +49,7 @@ python azure_chatbot_base.py
 ```
 - Base = chat only and do not ingest any document.
 - it will go to source_document folder and ingest data and persist using chroma (i took it from PrivateGPT).
+- if chroma db is found, DATA will not be reloaded.
 - It uses OpenAIEmbeddings which also require your `Azure OpenAI Environment Variable`
 - it will then initialize the model and start interacting
 
@@ -55,8 +60,11 @@ python hf_redpajama_chatbot_base.py
 ```
 - Base = chat only and do not ingest any document.
 - it will go to source_document folder and ingest data and persist using chroma (i took it from PrivateGPT).
+- if chroma db is found, DATA will not be reloaded.
 - It uses HuggingFaceEmbeddings (require internet to download sentence_transformers model)
 - it will then initialize the model (first time require internet to download model) and start interacting
+
+## Although chatbot will auto ingest, I highy recommand you to do the ingest separately where you can override the source path and enable CUDA just for ingestion
 
 ## Just run ingest.py
 ```shell
@@ -64,11 +72,15 @@ python ingest.py
 ```
 - it will go to source_document folder and ingest data and persist using chroma (i took it from PrivateGPT).
 - `Ingestion(offline=True)` to switch from online (OpenAIEmbeddings), by default it is offline (HuggingFaceEmbeddings) embedding
+- `Ingestion(offline=True, gpu=True, source_path=base_path)` to toggle CUDA and override source path
 - you can run Ingestion first and then run chatbot, chatbot will detect if a vector story already existed. this way you can test how long does it take to ingest.
 - OpenAIEmbedded vector store can only be use by azure_chatbot and vice versa.
 - ingestion specification is same as [PrivateGPT](https://github.com/imartinez/privateGPT)
 
-
+## GUI
+```shell
+streamlit run app.py
+```
 
 # Disclaimer
 This is a just for fun project for personal research purpose. It is not production ready, and it is not meant to be used in production. The models selection is not optimized for performance, but for privacy; but it is possible to use different models and vectorstores to improve performance.

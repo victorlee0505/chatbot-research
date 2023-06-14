@@ -84,12 +84,12 @@ LOADER_MAPPING = {
     # ".docx": (Docx2txtLoader, {}),
     ".doc": (UnstructuredWordDocumentLoader, {}),
     ".docx": (UnstructuredWordDocumentLoader, {}),
-    # ".enex": (EverNoteLoader, {}),
-    # ".eml": (MyElmLoader, {}),
-    # ".epub": (UnstructuredEPubLoader, {}),
-    # ".html": (UnstructuredHTMLLoader, {"encoding": "utf8"}),
-    # ".md": (UnstructuredMarkdownLoader, {}),
-    # ".odt": (UnstructuredODTLoader, {}),
+    ".enex": (EverNoteLoader, {}),
+    ".eml": (MyElmLoader, {}),
+    ".epub": (UnstructuredEPubLoader, {}),
+    ".html": (UnstructuredHTMLLoader, {"encoding": "utf8"}),
+    ".md": (UnstructuredMarkdownLoader, {}),
+    ".odt": (UnstructuredODTLoader, {}),
     ".pdf": (PDFMinerLoader, {}),
     ".ppt": (UnstructuredPowerPointLoader, {}),
     ".pptx": (UnstructuredPowerPointLoader, {}),
@@ -136,18 +136,17 @@ class Ingestion:
             if ext == ".csv":
                 try:
                     loader = loader_class(file_path, **loader_args)
+                    return loader.load()
                 except:
                     pass
                 try:
                     df = pd.read_csv(file_path)
                     loader = DataFrameLoader(df)
-                except:
-                    pass
-                try:
                     return loader.load()
                 except:
-                    print(f"csv failed to load: '{file_path}'")
-                    return []
+                    pass
+                print(f"\ncsv failed to load: '{file_path}'")
+                return []
             else:
                 try:
                     loader = loader_class(file_path, **loader_args)
@@ -357,5 +356,12 @@ class Ingestion:
 
 
 if __name__ == "__main__":
-    base_path = "C:\\Users\\victo\\workspaces\\OpenAI"
+
+    # overiding default source path
+    base_path = "C:\\path\\to\\your\\data"
+
+    # Offline
     ingest = Ingestion(offline=True, gpu=True, source_path=base_path)
+
+    # Online
+    # ingest = Ingestion(offline=False)

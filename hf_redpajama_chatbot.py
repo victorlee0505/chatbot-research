@@ -28,6 +28,7 @@ from constants import CHROMA_SETTINGS_HF, PERSIST_DIRECTORY_HF
 from ingest import Ingestion
 
 logger = logging.getLogger(__name__)
+logger.propagate = False
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 handler = logging.StreamHandler(stream=sys.stdout)
@@ -64,19 +65,23 @@ stop_words = ["Question:", "<human>:", "<bot>:"]
 
 # A ChatBot class
 # Build a ChatBot class with all necessary modules to make a complete conversation
-class HuggingfaceChatBot:
+class RedpajamaChatBot:
     # initialize
     def __init__(
         self,
+        model: str = None,
         load_data: bool = False,
         show_stream: bool = False,
         show_source: bool = False,
         gpu: bool = False,
+        gui_mode: bool = False,
     ):
+        self.model = model
         self.load_data = load_data
         self.show_stream = show_stream
         self.show_source = show_source
         self.gpu = gpu
+        self.gui_mode = gui_mode
         self.llm = None
         self.llm_predictor = None
         self.embedding_llm = None
@@ -89,6 +94,8 @@ class HuggingfaceChatBot:
         self.inputs = None
         self.end_chat = False
         # greet while starting
+        if self.model is None or len(self.model) == 0:
+            self.model = checkpoint
         self.welcome()
 
     def welcome(self):
@@ -197,22 +204,32 @@ class HuggingfaceChatBot:
     def promptWrapper(self, text: str):
         return "<human>: " + text + "\n<bot>: "
 
-    def user_input(self):
+    def user_input(self, prompt: str = None):
         # receive input from user
-        text = input("<human>: ")
+        if prompt:
+            text = prompt
+        else:
+            text = input("<human>: ")
+
         logger.debug(text)
         # end conversation if user wishes so
-        if text.lower().strip() in ["bye", "quit", "exit"]:
+        if text.lower().strip() in ["bye", "quit", "exit"] and not self.gui_mode:
             # turn flag on
             self.end_chat = True
             # a closing comment
             logger.info("<bot>: See you soon! Bye!")
             time.sleep(1)
             logger.info("\nQuitting ChatBot ...")
+            self.inputs = text
         else:
             self.inputs = text
 
-    def bot_response(self):
+    def bot_response(self)-> str:
+        if self.inputs.lower().strip() in ["bye", "quit", "exit"] and self.gui_mode:
+            # a closing comment
+            answer = "<bot>: See you soon! Bye!"
+            print(f"<bot>: {answer}")
+            return answer
         response = self.qa({"question": self.inputs, "chat_history": self.chat_history})
         answer, docs = (
             response["answer"],
@@ -232,6 +249,7 @@ class HuggingfaceChatBot:
                 print(f"<bot>: source_documents")
                 print("\n> " + document.metadata["source"] + ":")
                 print(document.page_content)
+        return answer
 
     # in case there is no response from model
     def random_response(self):
@@ -240,7 +258,7 @@ class HuggingfaceChatBot:
 
 if __name__ == "__main__":
     # build a ChatBot object
-    bot = HuggingfaceChatBot()
+    bot = RedpajamaChatBot()
     # start chatting
     while True:
         # receive user input
