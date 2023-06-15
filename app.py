@@ -6,6 +6,7 @@ from streamlit_chat import message
 
 from azure_chatbot import AzureOpenAiChatBot
 from azure_chatbot_base import AzureOpenAiChatBotBase
+from openai_chatbot import OpenAiChatBot
 from hf_redpajama_chatbot import RedpajamaChatBot
 from hf_redpajama_chatbot_base import RedpajamaChatBotBase
 from persist import load_widget_state, persist
@@ -27,6 +28,7 @@ def main():
             # Radio, selectbox and multiselect options.
             "options": ["Hello", "Everyone", "Happy", "Streamlit-ing"],
             "chat_mode_azure_options": [CHAT_ONLY, CLOSED, OPEN],
+            "chat_mode_openai_options": [CLOSED],
             "chat_mode_redpajama_options": [CHAT_ONLY, OPEN],
             "chat_model_redpajama_options": [REDPAJAMA_CHAT_3B, REDPAJAMA_CHAT_7B],
 
@@ -43,6 +45,12 @@ def main():
             "chat_start_azure": False,
             "prompt_azure": [],
             "completion_azure": [],
+
+            "chat_bot_openai": None,
+            "chat_mode_openai": CLOSED,
+            "chat_start_openai": False,
+            "prompt_openai": [],
+            "completion_openai": [],
 
             "chat_bot_redpajama": None,
             "chat_mode_redpajama": CHAT_ONLY,
@@ -91,6 +99,11 @@ def page_settings():
         - **chat_mode_azure**: `{st.session_state.chat_mode_azure}`
         - **chat_start_azure**: `{st.session_state.chat_start_azure}`
 
+        OpenAI Chatbot Status values
+        ---------------
+
+        - **chat_mode_openai**: `{st.session_state.chat_mode_openai}`
+        - **chat_start_openai**: `{st.session_state.chat_start_openai}`
         
         Redpajama Chatbot Status values
         ---------------
@@ -212,6 +225,100 @@ def page_azure():
         else:
             home()
 
+def page_openai():
+
+    def callback_reset():
+        print("callback_reset")
+        st.session_state["chat_start_openai"] = False
+        st.session_state["chat_mode_openai"] = CLOSED
+        del st.session_state["chat_bot_openai"]
+        st.session_state["chat_bot_openai"] = None
+        st.session_state["prompt_openai"] = []
+        st.session_state["completion_openai"] = []
+        gc.collect()
+
+    st.button("Reset Chatbot", on_click=callback_reset)
+
+    def callback():
+        print("callback")
+        if st.session_state["chat_mode_openai"] in st.session_state["chat_mode_openai_options"]:
+            st.session_state["chat_start_openai"] = True
+
+    def home():
+        # st.sidebar.header("Azure Chatbot")
+
+        st.markdown(
+            """
+
+        Please complete the setting below!
+
+        ### Chat mode?  Only 1 mode is available, Base Chatbot just use ChatGPT
+
+        - Closed : this will load context (docs / code repo) from source_documents folder and only answer to prompt related to the context
+
+        """
+        )
+
+        st.radio("Choose a chat mode:", st.session_state["chat_mode_openai_options"], key=persist("chat_mode_openai"))
+
+        start = st.button("Start", on_click=callback)
+
+    def run():
+        # container for chat history
+        response_container = st.container()
+        # container for text box
+        container = st.container()
+
+        chatbot = st.session_state["chat_bot_openai"]
+
+        with container:
+            with st.form(key="my_form", clear_on_submit=True):
+                user_input = st.text_area("You:", key="input", height=100)
+                submit_button = st.form_submit_button(label="Send")
+
+            if submit_button and user_input:
+                chatbot.user_input(prompt=user_input)
+                output = chatbot.bot_response()
+                print(f"output: {output}")
+                st.session_state["prompt_openai"].append(user_input)
+                st.session_state["completion_openai"].append(output)
+
+        if st.session_state["completion_openai"]:
+            with response_container:
+                for i in range(len(st.session_state["completion_openai"])):
+                    message(
+                        st.session_state["prompt_openai"][i],
+                        is_user=True,
+                        key=str(i) + "_user",
+                    )
+                    message(st.session_state["completion_openai"][i], key=str(i))
+
+    if "chat_start_openai" not in st.session_state:
+        if st.session_state["chat_bot_openai"] is not None:
+            st.session_state["chat_start_openai"] = True
+        else:
+            st.session_state["chat_start_openai"] = False
+            
+    if st.session_state["chat_start_openai"] == False:
+        print("Welcome to OpenAI Chatbot")
+        home()
+    else:
+        print("Starting OpenAI Chatbot")
+        if st.session_state["chat_mode_openai"] is not None:
+            # try to load model
+
+            if (st.session_state["chat_mode_openai"] == CLOSED
+                and st.session_state["chat_bot_openai"] is None
+            ):
+                st.session_state["chat_bot_openai"] = OpenAiChatBot(gui_mode=True)
+                print(f"Azure Chatbot: {CLOSED}")
+            else:
+                if st.session_state["chat_bot_openai"] is None:
+                    st.session_state["chat_bot_openai"] = OpenAiChatBot(gui_mode=True)
+                    print(f"Azure Chatbot: {CLOSED}")
+            run()
+        else:
+            home()
 
 def page_repajama():
     def callback_reset():
@@ -337,6 +444,7 @@ PAGES = {
     "home": page_home,
     "Status": page_settings,
     "azure-chatbot": page_azure,
+    "openai-chatbot": page_openai,
     "redpajama-chatbot": page_repajama,
 }
 

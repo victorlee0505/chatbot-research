@@ -53,6 +53,16 @@ python azure_chatbot_base.py
 - It uses OpenAIEmbeddings which also require your `Azure OpenAI Environment Variable`
 - it will then initialize the model and start interacting
 
+## Just run openai_chatbot.py
+```shell
+python opemai_chatbot.py
+```
+- The only chat mode is CLOSED so it does not answer anything outside of the context. (don't know how to make it open-ended)
+- it will go to source_document folder and ingest data and persist using chroma (i took it from PrivateGPT).
+- if chroma db is found, DATA will not be reloaded.
+- It uses OpenAIEmbeddings which also require your `OpenAI_API_KEY Environment Variable`
+- it will then initialize the model and start interacting
+
 ## Just run hf_redpajama_chatbot.py
 ```shell
 python hf_redpajama_chatbot.py
