@@ -6,5 +6,6 @@ unstructured
 transformers
 accelerate
 streamlit
+streamlit-chat 
 sentence_transformers
 chromadb

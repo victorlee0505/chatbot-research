@@ -5,16 +5,16 @@ import time
 
 import numpy as np
 import openai
+from langchain.callbacks import get_openai_callback
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import ConversationalRetrievalChain
-from langchain.chains.conversational_retrieval.prompts import (
-    CONDENSE_QUESTION_PROMPT, QA_PROMPT)
 from langchain.chat_models import ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
+from langchain.memory import ConversationSummaryBufferMemory
 from langchain.vectorstores import Chroma
 
-from ingest import Ingestion
 from constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
+from ingest import Ingestion
 
 logger = logging.getLogger(__name__)
 logger.propagate = False
@@ -30,6 +30,7 @@ target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 2))
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 model_name = "gpt-3.5-turbo"  # This will correspond to the custom name you chose for your deployment when you deployed a model.
+
 
 # A ChatBot class
 # Build a ChatBot class with all necessary modules to make a complete conversation
@@ -120,7 +121,9 @@ class OpenAiChatBot:
             embedding_function=self.embedding_llm,
             client_settings=CHROMA_SETTINGS_AZURE,
         )
-        retriever = db.as_retriever(search_type="mmr", search_kwargs={"k": 2}, max_tokens_limit=1000)
+        retriever = db.as_retriever(
+            search_type="mmr", search_kwargs={"k": 2}, max_tokens_limit=1000
+        )
         # activate/deactivate the streaming StdOut callback for LLMs
         callbacks = [StreamingStdOutCallbackHandler()] if self.show_stream else []
 
@@ -141,15 +144,31 @@ class OpenAiChatBot:
                 max_tokens=2000,
             )
 
+        memory = ConversationSummaryBufferMemory(
+            llm=self.llm,
+            max_token_limit=1000,
+            output_key="answer",
+            memory_key="chat_history",
+            ai_prefix="<bot>: ",
+            human_prefix="<human>: ",
+        )
+
         self.qa = ConversationalRetrievalChain.from_llm(
             llm=self.llm,
-            chain_type="map_rerank",
+            chain_type="stuff",
             retriever=retriever,
-            condense_question_prompt=CONDENSE_QUESTION_PROMPT,
+            memory=memory,
+            get_chat_history=lambda h: h,
             return_source_documents=self.show_source,
             verbose=False,
         )
 
+    def count_tokens(self, chain, query):
+        with get_openai_callback() as cb:
+            result = chain.run(query)
+            print(f"Spent a total of {cb.total_tokens} tokens")
+        return result
+    
     def promptWrapper(self, text: str):
         return "<human>: " + text + "\n<bot>: "
 
@@ -179,7 +198,7 @@ class OpenAiChatBot:
             answer = "<bot>: See you soon! Bye!"
             print(f"<bot>: {answer}")
             return answer
-        response = self.qa({"question": self.inputs, "chat_history": self.chat_history})
+        response = self.qa({"question": self.inputs})
         answer, docs = (
             response["answer"],
             response["source_documents"] if self.show_source else [],
@@ -211,7 +230,7 @@ if __name__ == "__main__":
 
     # Open chat
     bot = OpenAiChatBot(open_chat=True)
-    
+
     # start chatting
     while True:
         # receive user input
