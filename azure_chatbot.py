@@ -5,17 +5,17 @@ import time
 
 import numpy as np
 import openai
+from langchain.callbacks import get_openai_callback
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import ConversationalRetrievalChain
-from langchain.chains.conversational_retrieval.prompts import (
-    CONDENSE_QUESTION_PROMPT, QA_PROMPT)
 from langchain.chat_models import AzureChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.llms import AzureOpenAI
+from langchain.memory import ConversationSummaryBufferMemory
 from langchain.vectorstores import Chroma
 
-from ingest import Ingestion
 from constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
+from ingest import Ingestion
 
 logger = logging.getLogger(__name__)
 logger.propagate = False
@@ -30,10 +30,15 @@ persist_directory = PERSIST_DIRECTORY_AZURE
 target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 4))
 
 openai.api_type = "azure"
-openai.api_base = os.getenv("OPENAI_AZURE_BASE_URL")  # your endpoint should look like the following https://YOUR_RESOURCE_NAME.openai.azure.com/
+openai.api_base = os.getenv(
+    "OPENAI_AZURE_BASE_URL"
+)  # your endpoint should look like the following https://YOUR_RESOURCE_NAME.openai.azure.com/
 openai.api_version = "2023-05-15"  # this may change in the future
 openai.api_key = os.getenv("OPENAI_API_KEY")
-deployment_name = os.getenv("OPENAI_DEPLOYMENT_NAME")  # This will correspond to the custom name you chose for your deployment when you deployed a model.
+deployment_name = os.getenv(
+    "OPENAI_DEPLOYMENT_NAME"
+)  # This will correspond to the custom name you chose for your deployment when you deployed a model.
+
 
 # A ChatBot class
 # Build a ChatBot class with all necessary modules to make a complete conversation
@@ -124,7 +129,9 @@ class AzureOpenAiChatBot:
             embedding_function=self.embedding_llm,
             client_settings=CHROMA_SETTINGS_AZURE,
         )
-        retriever = db.as_retriever(search_kwargs={"k": target_source_chunks})
+        retriever = db.as_retriever(
+            search_type="similarity", search_kwargs={"k": target_source_chunks}, max_tokens_limit=1000
+        )
         # activate/deactivate the streaming StdOut callback for LLMs
         callbacks = [StreamingStdOutCallbackHandler()] if self.show_stream else []
 
@@ -152,14 +159,30 @@ class AzureOpenAiChatBot:
                 },
             )
 
+        memory = ConversationSummaryBufferMemory(
+            llm=self.llm,
+            max_token_limit=1000,
+            output_key="answer",
+            memory_key="chat_history",
+            ai_prefix="<bot>: ",
+            human_prefix="<human>: ",
+        )
+
         self.qa = ConversationalRetrievalChain.from_llm(
             llm=self.llm,
             chain_type="stuff",
             retriever=retriever,
-            condense_question_prompt=CONDENSE_QUESTION_PROMPT,
+            memory=memory,
+            get_chat_history=lambda h: h,
             return_source_documents=self.show_source,
             verbose=False,
         )
+
+    def count_tokens(self, chain, query):
+        with get_openai_callback() as cb:
+            result = chain.run(query)
+            print(f"Spent a total of {cb.total_tokens} tokens")
+        return result
 
     def promptWrapper(self, text: str):
         return "<human>: " + text + "\n<bot>: "
@@ -200,9 +223,9 @@ class AzureOpenAiChatBot:
             answer = self.random_response()
         # print bot response
         self.chat_history.append((self.inputs, answer))
-        self.chat_history[:] =  self.chat_history[-10:]
         # logger.debug(self.chat_history)
         print(f"<bot>: {answer}")
+        self.count_tokens(self.qa, self.inputs)
         if self.show_source:
             for document in docs:
                 print(f"<bot>: source_documents")
@@ -223,7 +246,7 @@ if __name__ == "__main__":
 
     # Open chat
     bot = AzureOpenAiChatBot(open_chat=True)
-    
+
     # start chatting
     while True:
         # receive user input

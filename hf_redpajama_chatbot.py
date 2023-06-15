@@ -5,24 +5,13 @@ import time
 
 import numpy as np
 import torch
-from langchain import HuggingFaceHub, HuggingFacePipeline
+from langchain import HuggingFacePipeline
 from langchain.chains import ConversationalRetrievalChain
-from langchain.chains.conversational_retrieval.prompts import (
-    CONDENSE_QUESTION_PROMPT,
-    QA_PROMPT,
-)
-from langchain.chains.llm import LLMChain
-from langchain.chains.question_answering import load_qa_chain
 from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.prompts import PromptTemplate
+from langchain.memory import ConversationSummaryBufferMemory
 from langchain.vectorstores import Chroma
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    StoppingCriteria,
-    StoppingCriteriaList,
-    pipeline,
-)
+from transformers import (AutoModelForCausalLM, AutoTokenizer,
+                          StoppingCriteria, StoppingCriteriaList, pipeline)
 
 from constants import CHROMA_SETTINGS_HF, PERSIST_DIRECTORY_HF
 from ingest import Ingestion
@@ -61,7 +50,9 @@ class StoppingCriteriaSub(StoppingCriteria):
                 return True
         return False
 
+
 stop_words = ["Question:", "<human>:", "<bot>:"]
+
 
 # A ChatBot class
 # Build a ChatBot class with all necessary modules to make a complete conversation
@@ -144,7 +135,9 @@ class RedpajamaChatBot:
             embedding_function=self.embedding_llm,
             client_settings=CHROMA_SETTINGS_HF,
         )
-        retriever = db.as_retriever(search_kwargs={"k": target_source_chunks})
+        retriever = db.as_retriever(
+            search_type="similarity", search_kwargs={"k": target_source_chunks}, max_tokens_limit=1000
+        )
 
         tokenizer = AutoTokenizer.from_pretrained(checkpoint)
         if self.gpu:
@@ -190,12 +183,21 @@ class RedpajamaChatBot:
 
         # question_generator = LLMChain(llm=self.llm, prompt=CONDENSE_QUESTION_PROMPT)
         # doc_chain = load_qa_chain(llm=self.llm, chain_type="stuff", prompt=QA_PROMPT)
+        memory = ConversationSummaryBufferMemory(
+            llm=self.llm,
+            max_token_limit=1000,
+            output_key="answer",
+            memory_key="chat_history",
+            ai_prefix="<bot>: ",
+            human_prefix="<human>: ",
+        )
 
         self.qa = ConversationalRetrievalChain.from_llm(
             llm=self.llm,
             chain_type="stuff",
             retriever=retriever,
-            condense_question_prompt=CONDENSE_QUESTION_PROMPT,
+            memory=memory,
+            get_chat_history=lambda h: h,
             return_source_documents=self.show_source,
         )
 
@@ -224,13 +226,13 @@ class RedpajamaChatBot:
         else:
             self.inputs = text
 
-    def bot_response(self)-> str:
+    def bot_response(self) -> str:
         if self.inputs.lower().strip() in ["bye", "quit", "exit"] and self.gui_mode:
             # a closing comment
             answer = "<bot>: See you soon! Bye!"
             print(f"<bot>: {answer}")
             return answer
-        response = self.qa({"question": self.inputs, "chat_history": self.chat_history})
+        response = self.qa({"question": self.inputs})
         answer, docs = (
             response["answer"],
             response["source_documents"] if self.show_source else [],
@@ -242,7 +244,6 @@ class RedpajamaChatBot:
             answer = answer.replace("\n<human>:", "")
         # print bot response
         self.chat_history.append((f"<human>: {self.inputs}", f"<bot>: {answer}"))
-        self.chat_history[:] =  self.chat_history[-10:]
         # logger.info(self.chat_history)
         print(f"<bot>: {answer}")
         if self.show_source:

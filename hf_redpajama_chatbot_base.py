@@ -7,9 +7,7 @@ import numpy as np
 import torch
 from langchain import HuggingFacePipeline
 from langchain.chains import ConversationChain
-from langchain.chains.llm import LLMChain
-from langchain.chains.question_answering import load_qa_chain
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationSummaryBufferMemory
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -142,7 +140,12 @@ class RedpajamaChatBotBase:
         # AI:"""
         # PROMPT = PromptTemplate(input_variables=["history", "input"], template=DEFAULT_TEMPLATE)
 
-        memory = ConversationBufferMemory(ai_prefix="<bot>: ", human_prefix="<human>: ")
+        memory = ConversationSummaryBufferMemory(
+            llm=self.llm,
+            max_token_limit=1000,
+            ai_prefix="<bot>: ",
+            human_prefix="<human>: ",
+        )
         self.qa = ConversationChain(llm=self.llm, memory=memory, verbose=False)
 
     def promptWrapper(self, text: str):

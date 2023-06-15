@@ -5,10 +5,11 @@ import time
 
 import numpy as np
 import openai
+from langchain.callbacks import get_openai_callback
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import ConversationChain
 from langchain.chat_models import AzureChatOpenAI
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationSummaryBufferMemory
 
 logger = logging.getLogger(__name__)
 logger.propagate = False
@@ -20,10 +21,15 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 openai.api_type = "azure"
-openai.api_base = os.getenv("OPENAI_AZURE_BASE_URL")  # your endpoint should look like the following https://YOUR_RESOURCE_NAME.openai.azure.com/
+openai.api_base = os.getenv(
+    "OPENAI_AZURE_BASE_URL"
+)  # your endpoint should look like the following https://YOUR_RESOURCE_NAME.openai.azure.com/
 openai.api_version = "2023-05-15"  # this may change in the future
 openai.api_key = os.getenv("OPENAI_API_KEY")
-deployment_name = os.getenv("OPENAI_DEPLOYMENT_NAME")  # This will correspond to the custom name you chose for your deployment when you deployed a model.
+deployment_name = os.getenv(
+    "OPENAI_DEPLOYMENT_NAME"
+)  # This will correspond to the custom name you chose for your deployment when you deployed a model.
+
 
 # A ChatBot class
 # Build a ChatBot class with all necessary modules to make a complete conversation
@@ -75,8 +81,19 @@ class AzureOpenAiChatBotBase:
             openai_api_key=openai.api_key,
         )
 
-        memory = ConversationBufferMemory(ai_prefix="<bot>: ", human_prefix="<human>: ")
+        memory = ConversationSummaryBufferMemory(
+            llm=self.llm,
+            max_token_limit=1000,
+            ai_prefix="<bot>: ",
+            human_prefix="<human>: ",
+        )
         self.qa = ConversationChain(llm=self.llm, memory=memory, verbose=False)
+
+    def count_tokens(self, chain, query):
+        with get_openai_callback() as cb:
+            result = chain.run(query)
+            print(f"Spent a total of {cb.total_tokens} tokens")
+        return result
 
     def user_input(self, prompt: str = None):
         # receive input from user
@@ -84,7 +101,7 @@ class AzureOpenAiChatBotBase:
             text = prompt
         else:
             text = input("<human>: ")
-        
+
         logger.debug(text)
         # end conversation if user wishes so
         if text.lower().strip() in ["bye", "quit", "exit"] and not self.gui_mode:
@@ -112,6 +129,7 @@ class AzureOpenAiChatBotBase:
         self.chat_history.append((self.inputs, answer))
         # logger.debug(self.chat_history)
         print(f"<bot>: {answer}")
+        self.count_tokens(self.qa, self.inputs)
         return answer
 
     # in case there is no response from model

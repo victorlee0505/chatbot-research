@@ -122,7 +122,7 @@ class OpenAiChatBot:
             client_settings=CHROMA_SETTINGS_AZURE,
         )
         retriever = db.as_retriever(
-            search_type="mmr", search_kwargs={"k": 2}, max_tokens_limit=1000
+            search_type="similarity", search_kwargs={"k": target_source_chunks}, max_tokens_limit=1000
         )
         # activate/deactivate the streaming StdOut callback for LLMs
         callbacks = [StreamingStdOutCallbackHandler()] if self.show_stream else []
