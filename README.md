@@ -39,6 +39,13 @@ OPENAI_AZURE_BASE_URL
 
 OPENAI_DEPLOYMENT_NAME
 ```
+
+For OpenAI
+```
+OPENAI_API_KEY
+
+```
+
 For HuggingFace, nothing.
 
 # How to run
@@ -55,7 +62,7 @@ python azure_chatbot_base.py
 
 ## Just run openai_chatbot.py
 ```shell
-python opemai_chatbot.py
+python openai_chatbot.py
 ```
 - The only chat mode is CLOSED so it does not answer anything outside of the context. (don't know how to make it open-ended)
 - it will go to source_document folder and ingest data and persist using chroma (i took it from PrivateGPT).
