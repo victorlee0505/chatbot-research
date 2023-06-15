@@ -40,7 +40,6 @@ class OpenAiChatBot:
         self,
         model: str = None,
         source_path: str = None,
-        open_chat: bool = False,
         load_data: bool = False,
         show_stream: bool = False,
         show_source: bool = False,
@@ -58,7 +57,6 @@ class OpenAiChatBot:
         """
         self.model = model
         self.source_path = source_path
-        self.open_chat = open_chat
         self.load_data = load_data
         self.show_stream = show_stream
         self.show_source = show_source
@@ -127,22 +125,12 @@ class OpenAiChatBot:
         # activate/deactivate the streaming StdOut callback for LLMs
         callbacks = [StreamingStdOutCallbackHandler()] if self.show_stream else []
 
-        if self.open_chat:
-            logger.info(f"Open Chat = True!")
-            self.llm = ChatOpenAI(
-                model_name=self.model,
-                callbacks=callbacks,
-                openai_api_key=openai.api_key,
-                max_tokens=2000,
-            )
-        else:
-            logger.info(f"Open Chat = False!")
-            self.llm = ChatOpenAI(
-                model_name=self.model,
-                callbacks=callbacks,
-                openai_api_key=openai.api_key,
-                max_tokens=2000,
-            )
+        self.llm = ChatOpenAI(
+            model_name=self.model,
+            callbacks=callbacks,
+            openai_api_key=openai.api_key,
+            max_tokens=2000,
+        )
 
         memory = ConversationSummaryBufferMemory(
             llm=self.llm,
@@ -229,7 +217,7 @@ if __name__ == "__main__":
     # bot = AzureOpenAiChatBot()
 
     # Open chat
-    bot = OpenAiChatBot(open_chat=True)
+    bot = OpenAiChatBot()
 
     # start chatting
     while True:

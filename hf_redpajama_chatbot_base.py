@@ -27,16 +27,8 @@ logger.addHandler(handler)
 
 target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 4))
 
-# max LLM token input size
-max_input_size = 500
-# set number of output tokens
-num_output = 50
-# set maximum chunk overlap
-max_chunk_overlap = 20
-
 # checkpoint
 checkpoint = "togethercomputer/RedPajama-INCITE-Chat-3B-v1"
-
 
 class StoppingCriteriaSub(StoppingCriteria):
     def __init__(self, stops=[], encounters=1):
@@ -119,7 +111,7 @@ class RedpajamaChatBotBase:
             "text-generation",
             model=model,
             tokenizer=tokenizer,
-            max_new_tokens=128,
+            max_new_tokens=400,
             temperature=0.7,
             top_p=0.7,
             top_k=50,
