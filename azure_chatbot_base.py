@@ -84,8 +84,6 @@ class AzureOpenAiChatBotBase:
         memory = ConversationSummaryBufferMemory(
             llm=self.llm,
             max_token_limit=1000,
-            ai_prefix="<bot>: ",
-            human_prefix="<human>: ",
         )
         self.qa = ConversationChain(llm=self.llm, memory=memory, verbose=False)
 

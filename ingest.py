@@ -371,11 +371,12 @@ if __name__ == "__main__":
     base_path = "C:\\path\\to\\your\\data"
 
     # Offline
+    # ingest = Ingestion(offline=True, source_path=base_path)
     # ingest = Ingestion(offline=True, gpu=True, source_path=base_path)
 
-    # Online
+    # Azure Open AI
     # ingest = Ingestion(offline=False)
 
-    # open ai
+    # OpenAI
     ingest = Ingestion(offline=False, openai=True)
 

@@ -49,6 +49,23 @@ OPENAI_API_KEY
 For HuggingFace, nothing.
 
 # How to run
+
+### `Although start up chatbot will auto ingest (from default path ./source_documents), I highy recommand you to do the ingest separately where you can choose to use OpenAI sbuscription, enable private local offline embedding, override the source path and enable CUDA for ingestion`
+
+## Just run ingest.py
+```shell
+python ingest.py
+```
+- it will go to source_document folder and ingest data and persist using chroma (i took it from PrivateGPT).
+- `Ingestion(offline=True)` Default False: online (OpenAIEmbeddings), offline=True to use offline (HuggingFaceEmbeddings) embedding
+- `Ingestion(offline=True, gpu=True, source_path=base_path)` to toggle CUDA
+- `Ingestion(offline=True, gpu=True, source_path=base_path)` to toggle CUDA and override source path
+- `Ingestion(openai=True)` to use OpenAI subscription for embedding
+- you can run Ingestion first and then run chatbot, chatbot will detect if a vector story already existed. this way you can test how long does it take to ingest.
+- OpenAIEmbedded vector store can only be use by azure_chatbot and vice versa.
+- ingestion specification is same as [PrivateGPT](https://github.com/imartinez/privateGPT)
+
+### `delete ./storage_azure or ./storage_hf will remove vector storage so you can start over`
 ## Just run azure_chatbot.py or azure_chatbot_base.py
 ```shell
 python azure_chatbot.py
@@ -80,19 +97,6 @@ python hf_redpajama_chatbot_base.py
 - if chroma db is found, DATA will not be reloaded.
 - It uses HuggingFaceEmbeddings (require internet to download sentence_transformers model)
 - it will then initialize the model (first time require internet to download model) and start interacting
-
-## Although chatbot will auto ingest, I highy recommand you to do the ingest separately where you can override the source path and enable CUDA just for ingestion
-
-## Just run ingest.py
-```shell
-python ingest.py
-```
-- it will go to source_document folder and ingest data and persist using chroma (i took it from PrivateGPT).
-- `Ingestion(offline=True)` to switch from online (OpenAIEmbeddings), by default it is offline (HuggingFaceEmbeddings) embedding
-- `Ingestion(offline=True, gpu=True, source_path=base_path)` to toggle CUDA and override source path
-- you can run Ingestion first and then run chatbot, chatbot will detect if a vector story already existed. this way you can test how long does it take to ingest.
-- OpenAIEmbedded vector store can only be use by azure_chatbot and vice versa.
-- ingestion specification is same as [PrivateGPT](https://github.com/imartinez/privateGPT)
 
 ## GUI
 ```shell
