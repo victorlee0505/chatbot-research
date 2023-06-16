@@ -8,6 +8,7 @@ import openai
 from langchain.callbacks import get_openai_callback
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import ConversationalRetrievalChain
+from langchain.chains.conversational_retrieval.prompts import CONDENSE_QUESTION_PROMPT
 from langchain.chat_models import AzureChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.llms import AzureOpenAI
@@ -173,6 +174,7 @@ class AzureOpenAiChatBot:
             chain_type="stuff",
             retriever=retriever,
             memory=memory,
+            condense_question_prompt=CONDENSE_QUESTION_PROMPT,
             get_chat_history=lambda h: h,
             return_source_documents=self.show_source,
             verbose=False,
