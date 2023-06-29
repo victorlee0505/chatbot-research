@@ -26,7 +26,7 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 persist_directory = PERSIST_DIRECTORY_HF
-target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 4))
+target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 2))
 
 # checkpoint
 checkpoint = "togethercomputer/RedPajama-INCITE-Chat-3B-v1"
