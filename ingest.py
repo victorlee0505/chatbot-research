@@ -241,7 +241,7 @@ class Ingestion:
         )
         texts = text_splitter.split_documents(documents)
         print(f"Split into {len(texts)} chunks of text (max. {chunk_size} tokens each)")
-        return documents
+        return texts
 
     def does_vectorstore_exist(self, persist_directory: str) -> bool:
         """
