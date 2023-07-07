@@ -17,10 +17,11 @@ from typing import (
 
 import numpy as np
 from azure.core.credentials import AzureKeyCredential
+from azure.core.exceptions import ResourceNotFoundError
+from azure.identity import DefaultAzureCredential
 from azure.search.documents import SearchClient
-from azure.search.documents.indexes import SearchIndexClient
+from azure.search.documents.indexes import SearchIndexClient, SearchIndexerClient
 from azure.search.documents.indexes.models import (
-    ComplexField,
     PrioritizedFields,
     SearchableField,
     SearchField,
@@ -30,7 +31,14 @@ from azure.search.documents.indexes.models import (
     SemanticField,
     SemanticSettings,
     SimpleField,
+    VectorSearch,
+    VectorSearchAlgorithmConfiguration,
+    SearchIndexer,
+    SearchIndexerSkillset,
+    SearchIndexerSkill,
+    OcrSkill,
 )
+
 from langchain.callbacks.manager import (
     AsyncCallbackManagerForRetrieverRun,
     CallbackManagerForRetrieverRun,
@@ -67,7 +75,6 @@ FIELDS_METADATA_CONTENT_TYPE = "content_type"
 FIELDS_METADATA_CREATION_DATE = "created"
 FIELDS_METADATA_LAST_MODIFIED = "modified"
 
-
 def _get_search_client(
     endpoint: str,
     key: str,
@@ -77,24 +84,6 @@ def _get_search_client(
     semantic_config: SemanticConfiguration = None,
     fields=[],
 ) -> SearchClient:
-    from azure.core.credentials import AzureKeyCredential
-    from azure.core.exceptions import ResourceNotFoundError
-    from azure.identity import DefaultAzureCredential
-    from azure.search.documents import SearchClient
-    from azure.search.documents.indexes import SearchIndexClient
-    from azure.search.documents.indexes.models import (
-        PrioritizedFields,
-        SearchableField,
-        SearchField,
-        SearchFieldDataType,
-        SearchIndex,
-        SemanticConfiguration,
-        SemanticField,
-        SemanticSettings,
-        SimpleField,
-        VectorSearch,
-        VectorSearchAlgorithmConfiguration,
-    )
 
     if key is None:
         credential = DefaultAzureCredential()
@@ -200,7 +189,6 @@ def _get_search_client(
         index_client.create_or_update_index(index)
     # Create the search client
     return SearchClient(endpoint=endpoint, index_name=index_name, credential=credential)
-
 
 class AzureCognitiveSearch(VectorStore):
     def __init__(
