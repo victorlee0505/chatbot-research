@@ -7,6 +7,7 @@ from typing import List
 
 import openai
 import pandas as pd
+import torch
 from chromadb.config import Settings
 from langchain.docstore.document import Document
 from langchain.document_loaders import (
@@ -266,6 +267,7 @@ class Ingestion:
 
     def main(self):
         print(f"Offline Embedding: {self.offline}")
+        torch.set_num_threads(os.cpu_count())
         # Create embeddings
         if self.offline:
             if not self.gpu:

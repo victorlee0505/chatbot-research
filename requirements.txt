@@ -2,6 +2,7 @@ openai
 llama_index
 langchain
 lxml
+pypdf
 unstructured
 transformers
 accelerate

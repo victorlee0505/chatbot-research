@@ -68,6 +68,7 @@ class RedpajamaChatBotBase:
 
     def welcome(self):
         logger.info("Initializing ChatBot ...")
+        torch.set_num_threads(os.cpu_count())
         if not self.gpu:
             logger.info("Disable CUDA")
             os.environ["CUDA_VISIBLE_DEVICES"] = "-1"

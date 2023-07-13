@@ -26,7 +26,7 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 persist_directory = PERSIST_DIRECTORY_HF
-target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 2))
+target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 4))
 
 # checkpoint
 checkpoint = "togethercomputer/RedPajama-INCITE-Chat-3B-v1"
@@ -83,6 +83,7 @@ class RedpajamaChatBot:
 
     def welcome(self):
         logger.info("Initializing ChatBot ...")
+        torch.set_num_threads(os.cpu_count())
         if not self.gpu:
             logger.info("Disable CUDA")
             os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
