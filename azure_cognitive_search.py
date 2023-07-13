@@ -35,9 +35,9 @@ from azure.search.documents.indexes.models import (
     VectorSearchAlgorithmConfiguration,
     SearchIndexer,
     SearchIndexerSkillset,
-    SearchIndexerSkill,
     OcrSkill,
 )
+from azure.search.documents.models import QueryType, QuerySpellerType, QueryAnswerType, QueryCaptionType
 
 from langchain.callbacks.manager import (
     AsyncCallbackManagerForRetrieverRun,
@@ -108,6 +108,14 @@ def _get_search_client(
                 type=SearchFieldDataType.String,
                 searchable=True,
                 retrievable=True,
+                filterable=True,
+            ),
+            SearchableField(
+                name=FIELDS_METADATA,
+                type=SearchFieldDataType.String,
+                searchable=True,
+                retrievable=True,
+                filterable=True,
             ),
             SearchField(
                 name=FIELDS_CONTENT_VECTOR,
@@ -116,12 +124,6 @@ def _get_search_client(
                 dimensions=len(embedding_function("Text")),
                 vector_search_configuration="default",
             ),
-            # SearchableField(
-            #     name=FIELDS_METADATA,
-            #     type=SearchFieldDataType.String,
-            #     searchable=True,
-            #     retrievable=True,
-            # ),
             # SearchableField(
             #     name=FIELDS_METADATA_AUTHOR,
             #     type=SearchFieldDataType.String,
@@ -171,9 +173,7 @@ def _get_search_client(
                     SemanticConfiguration(
                         name=semantic_configuration_name,
                         prioritized_fields=PrioritizedFields(
-                            prioritized_content_fields=[
-                                SemanticField(field_name=FIELDS_CONTENT)
-                            ],
+                            prioritized_content_fields=[SemanticField(field_name=FIELDS_CONTENT)],
                         ),
                     )
                 ]
@@ -206,11 +206,11 @@ class AzureCognitiveSearch(VectorStore):
         # Initialize base class
         self.embedding_function = embedding_function
         self.client = _get_search_client(
-            azure_search_endpoint,
-            azure_search_key,
-            index_name,
-            embedding_function,
-            semantic_configuration_name,
+            endpoint=azure_search_endpoint,
+            key=azure_search_key,
+            index_name=index_name,
+            embedding_function=embedding_function,
+            semantic_configuration_name=semantic_configuration_name,
         )
         self.search_type = search_type
         self.semantic_configuration_name = semantic_configuration_name
@@ -368,7 +368,7 @@ class AzureCognitiveSearch(VectorStore):
             List of Documents most similar to the query and score for each
         """
         from azure.search.documents.models import Vector
-
+        print(f'hybrid_search_with_score filters: {filters}')
         results = self.client.search(
             search_text=query,
             vector=Vector(
@@ -408,6 +408,8 @@ class AzureCognitiveSearch(VectorStore):
         Returns:
             List[Document]: A list of documents that are most similar to the query text.
         """
+        print(f'kwargs: {kwargs}')
+        print(f'filters: {kwargs.get("filters")}')
         docs_and_scores = self.semantic_hybrid_search_with_score(
             query, k=k, filters=kwargs.get("filters", None)
         )
@@ -438,11 +440,12 @@ class AzureCognitiveSearch(VectorStore):
             ),
             select=[f"{FIELDS_ID},{FIELDS_CONTENT},{FIELDS_METADATA}"],
             filter=filters,
-            query_type="semantic",
+            query_type=QueryType.SEMANTIC,
             query_language=self.semantic_query_language,
+            query_speller=QuerySpellerType.LEXICON,
             semantic_configuration_name=self.semantic_configuration_name,
-            query_caption="extractive",
-            query_answer="extractive",
+            query_caption=QueryCaptionType.EXTRACTIVE,
+            query_answer=QueryAnswerType.EXTRACTIVE,
             top=k,
         )
         # Get Semantic Answers
@@ -503,7 +506,7 @@ class AzureCognitiveSearch(VectorStore):
         return azure_search
 
 
-class AzureCognitiveSearchVectorStoreRetriever(BaseRetriever, BaseModel):
+class AzureCognitiveSearchVectorStoreRetriever(BaseRetriever):
     vectorstore: AzureCognitiveSearch
     search_type: str = "hybrid"
     k: int = 4

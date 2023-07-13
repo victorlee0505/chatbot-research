@@ -23,7 +23,6 @@ from langchain.document_loaders import (
     UnstructuredWordDocumentLoader,
 )
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
 from tqdm import tqdm
