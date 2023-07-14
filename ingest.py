@@ -49,7 +49,7 @@ persist_directory_hf = PERSIST_DIRECTORY_HF
 chroma_setting_azure = CHROMA_SETTINGS_AZURE
 chroma_setting_hf = CHROMA_SETTINGS_HF
 source_directory = "./source_documents"
-chunk_size = 200
+chunk_size = 500
 chunk_overlap = 10
 
 

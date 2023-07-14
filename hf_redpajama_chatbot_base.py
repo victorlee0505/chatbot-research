@@ -101,13 +101,24 @@ class RedpajamaChatBotBase:
             model = AutoModelForCausalLM.from_pretrained(checkpoint)
             torch_dtype = torch.bfloat16
 
-        stop_words_ids = [
-            tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
-            for stop_word in stop_words
-        ]
-        stopping_criteria = StoppingCriteriaList(
-            [StoppingCriteriaSub(stops=stop_words_ids)]
-        )
+        if self.gpu:
+            stop_words_ids = [
+                tokenizer(stop_word, return_tensors="pt").to('cuda')["input_ids"].squeeze()
+                for stop_word in stop_words
+            ]
+            stopping_criteria = StoppingCriteriaList(
+                [StoppingCriteriaSub(stops=stop_words_ids)]
+            )
+        else:
+            stop_words_ids = [
+                tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
+                for stop_word in stop_words
+            ]
+            stopping_criteria = StoppingCriteriaList(
+                [StoppingCriteriaSub(stops=stop_words_ids)]
+            )
+        
+        device = torch.device(f"cuda:{torch.cuda.current_device()}" if torch.cuda.is_available() else "cpu")
         pipe = pipeline(
             "text-generation",
             model=model,
@@ -117,7 +128,8 @@ class RedpajamaChatBotBase:
             top_p=0.7,
             top_k=50,
             pad_token_id=tokenizer.eos_token_id,
-            device_map="auto",
+            device=device,
+            # device_map="auto",
             do_sample=True,
             torch_dtype=torch_dtype,
             stopping_criteria=stopping_criteria,
