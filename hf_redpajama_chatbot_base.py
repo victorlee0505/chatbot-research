@@ -41,7 +41,7 @@ class StoppingCriteriaSub(StoppingCriteria):
                 return True
         return False
 
-stop_words = ["Question:", "<human>:", "<bot>:"]
+stop_words = ["Question:", "<human>:", "Q:", "Human:"]
 
 # A ChatBot class
 # Build a ChatBot class with all necessary modules to make a complete conversation
@@ -91,14 +91,14 @@ class RedpajamaChatBotBase:
 
     def initialize_model(self):
         logger.info("Initializing Model ...")
-        tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+        tokenizer = AutoTokenizer.from_pretrained(self.model)
 
         if self.gpu:
-            model = AutoModelForCausalLM.from_pretrained(checkpoint)
+            model = AutoModelForCausalLM.from_pretrained(self.model)
             model = self.model.half().cuda()
             torch_dtype = torch.float16
         else:
-            model = AutoModelForCausalLM.from_pretrained(checkpoint)
+            model = AutoModelForCausalLM.from_pretrained(self.model)
             torch_dtype = torch.bfloat16
 
         if self.gpu:
@@ -145,11 +145,20 @@ class RedpajamaChatBotBase:
         # AI:"""
         # PROMPT = PromptTemplate(input_variables=["history", "input"], template=DEFAULT_TEMPLATE)
 
+        instruct_prefix = "instruct"
+        if instruct_prefix.lower() in self.model.lower():
+            ai_prefix="Q: "
+            human_prefix="A: "
+        else:
+            ai_prefix="<bot>: "
+            human_prefix="<human>: "
         memory = ConversationSummaryBufferMemory(
             llm=self.llm,
             max_token_limit=1000,
-            ai_prefix="<bot>: ",
-            human_prefix="<human>: ",
+            output_key="response",
+            memory_key="history",
+            ai_prefix=ai_prefix,
+            human_prefix=human_prefix,
         )
         self.qa = ConversationChain(llm=self.llm, memory=memory, verbose=False)
 
@@ -182,12 +191,16 @@ class RedpajamaChatBotBase:
             answer = "<bot>: See you soon! Bye!"
             print(f"<bot>: {answer}")
             return answer
-        answer = self.qa.run(self.promptWrapper(self.inputs))
+        response = self.qa({"input": self.inputs})
+        answer = (
+            response["response"]
+        )
         # in case, bot fails to answer
         if answer == "":
             answer = self.random_response()
         else:
-            answer = answer.replace("\n<human>:", "")
+            answer = answer.replace("\n<human>:", "") #chat
+            answer = answer.replace("\nHuman:", "") #instruct
         # print bot response
         self.chat_history.append((f"<human>: {self.inputs}", f"<bot>: {answer}"))
         # logger.info(self.chat_history)
@@ -202,6 +215,7 @@ class RedpajamaChatBotBase:
 if __name__ == "__main__":
     # build a ChatBot object
     bot = RedpajamaChatBotBase()
+    # bot = RedpajamaChatBotBase(model="togethercomputer/RedPajama-INCITE-7B-Chat")
     # start chatting
     while True:
         # receive user input

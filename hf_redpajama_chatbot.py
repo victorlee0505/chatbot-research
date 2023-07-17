@@ -10,6 +10,7 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.vectorstores import Chroma
+from langchain.chains.chat_vector_db.prompts import QA_PROMPT
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           StoppingCriteria, StoppingCriteriaList, pipeline)
 
@@ -43,7 +44,7 @@ class StoppingCriteriaSub(StoppingCriteria):
         return False
 
 
-stop_words = ["Question:", "<human>:", "<bot>:"]
+stop_words = ["Question:", "<human>:", "Q:", "Human:"]
 
 
 # A ChatBot class
@@ -132,13 +133,13 @@ class RedpajamaChatBot:
             search_type="similarity", search_kwargs={"k": target_source_chunks}, max_tokens_limit=1000
         )
 
-        tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+        tokenizer = AutoTokenizer.from_pretrained(self.model)
         if self.gpu:
-            model = AutoModelForCausalLM.from_pretrained(checkpoint)
+            model = AutoModelForCausalLM.from_pretrained(self.model)
             model.half().cuda()
             torch_dtype = torch.float16
         else:
-            model = AutoModelForCausalLM.from_pretrained(checkpoint)
+            model = AutoModelForCausalLM.from_pretrained(self.model)
             torch_dtype = torch.bfloat16
 
         if self.gpu:
@@ -187,13 +188,20 @@ class RedpajamaChatBot:
 
         # question_generator = LLMChain(llm=self.llm, prompt=CONDENSE_QUESTION_PROMPT)
         # doc_chain = load_qa_chain(llm=self.llm, chain_type="stuff", prompt=QA_PROMPT)
+        instruct_prefix = "instruct"
+        if instruct_prefix.lower() in self.model.lower():
+            ai_prefix="Q: "
+            human_prefix="A: "
+        else:
+            ai_prefix="<bot>: "
+            human_prefix="<human>: "
         memory = ConversationSummaryBufferMemory(
             llm=self.llm,
             max_token_limit=1000,
             output_key="answer",
             memory_key="chat_history",
-            ai_prefix="<bot>: ",
-            human_prefix="<human>: ",
+            ai_prefix=ai_prefix,
+            human_prefix=human_prefix,
         )
 
         self.qa = ConversationalRetrievalChain.from_llm(
@@ -201,6 +209,7 @@ class RedpajamaChatBot:
             chain_type="stuff",
             retriever=retriever,
             memory=memory,
+            combine_docs_chain_kwargs={"prompt": QA_PROMPT},
             get_chat_history=lambda h: h,
             return_source_documents=self.show_source,
         )
@@ -264,7 +273,9 @@ class RedpajamaChatBot:
 
 if __name__ == "__main__":
     # build a ChatBot object
-    bot = RedpajamaChatBot(gpu=True)
+    # bot = RedpajamaChatBot(gpu=True)
+    bot = RedpajamaChatBot(model="togethercomputer/RedPajama-INCITE-7B-Chat", gpu=True, show_source=True)
+    # bot = RedpajamaChatBot(model="togethercomputer/RedPajama-INCITE-Instruct-3B-v1",show_source=True)
     # start chatting
     while True:
         # receive user input

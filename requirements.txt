@@ -13,3 +13,4 @@ chromadb
 faiss-cpu
 azure-identity
 azure-search-documents
+einops
