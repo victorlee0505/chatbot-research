@@ -2,12 +2,10 @@ import logging
 import os
 import sys
 import time
-from typing import Dict, Union, Any, List
 
 import numpy as np
 import torch
 from langchain import HuggingFacePipeline
-from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
 from transformers import (
@@ -30,18 +28,7 @@ logger.addHandler(handler)
 target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 4))
 
 # checkpoint
-checkpoint = "togethercomputer/RedPajama-INCITE-Chat-3B-v1"
-
-class MyCustomHandler(BaseCallbackHandler):
-    def on_llm_start(
-        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
-    ) -> Any:
-        """Run when LLM starts running."""
-        print(f"My custom handler, llm_start: {prompts[-1]} stop")
-
-    def on_llm_end(self, response: Any, **kwargs: Any) -> Any:
-        """Run when LLM ends running."""
-        print(f"My custom handler, llm_end: {response.generations[0][0].text} stop")
+checkpoint = "bigcode/santacoder"
 
 class StoppingCriteriaSub(StoppingCriteria):
     def __init__(self, stops=[], encounters=1):
@@ -58,17 +45,18 @@ stop_words = ["Question:", "<human>:", "Q:", "Human:"]
 
 # A ChatBot class
 # Build a ChatBot class with all necessary modules to make a complete conversation
-class RedpajamaChatBotBase:
+class SantaCoderChatBotBase:
     # initialize
     def __init__(
         self,
         model: str = None,
-        show_callback: bool = False,
         gpu: bool = False,
         gui_mode: bool = False,
     ):
         self.model = model
-        self.show_callback = show_callback
+        self.tokenizer = None
+        self.device = None
+        self.torch_dtype = None
         self.gpu = gpu 
         self.gui_mode = gui_mode
         self.llm = None
@@ -106,78 +94,18 @@ class RedpajamaChatBotBase:
 
     def initialize_model(self):
         logger.info("Initializing Model ...")
-        tokenizer = AutoTokenizer.from_pretrained(self.model)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model)
 
         if self.gpu:
-            model = AutoModelForCausalLM.from_pretrained(self.model)
-            model = self.model.half().cuda()
-            torch_dtype = torch.float16
+            self.model = AutoModelForCausalLM.from_pretrained(self.model, trust_remote_code=True)
+            # model = self.model.half().cuda()
+            self.torch_dtype = torch.float16
         else:
-            model = AutoModelForCausalLM.from_pretrained(self.model)
-            torch_dtype = torch.bfloat16
-
-        if self.gpu:
-            stop_words_ids = [
-                tokenizer(stop_word, return_tensors="pt").to('cuda')["input_ids"].squeeze()
-                for stop_word in stop_words
-            ]
-            stopping_criteria = StoppingCriteriaList(
-                [StoppingCriteriaSub(stops=stop_words_ids)]
-            )
-        else:
-            stop_words_ids = [
-                tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
-                for stop_word in stop_words
-            ]
-            stopping_criteria = StoppingCriteriaList(
-                [StoppingCriteriaSub(stops=stop_words_ids)]
-            )
+            self.model = AutoModelForCausalLM.from_pretrained(self.model, trust_remote_code=True)
+            self.torch_dtype = torch.bfloat16
         
-        device = torch.device(f"cuda:{torch.cuda.current_device()}" if torch.cuda.is_available() else "cpu")
-        pipe = pipeline(
-            "text-generation",
-            model=model,
-            tokenizer=tokenizer,
-            max_new_tokens=400,
-            temperature=0.7,
-            top_p=0.7,
-            top_k=50,
-            pad_token_id=tokenizer.eos_token_id,
-            device=device,
-            # device_map="auto",
-            do_sample=True,
-            torch_dtype=torch_dtype,
-            stopping_criteria=stopping_criteria,
-            model_kwargs={"offload_folder": "offload"},
-        )
+        self.device = torch.device(f"cuda:{torch.cuda.current_device()}" if torch.cuda.is_available() else "cpu")
         
-        handler = [MyCustomHandler()] if self.show_callback else None
-        self.llm = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
-
-        # DEFAULT_TEMPLATE = """The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
-
-        # Current conversation:
-        # {history}
-        # Human: {input}
-        # AI:"""
-        # PROMPT = PromptTemplate(input_variables=["history", "input"], template=DEFAULT_TEMPLATE)
-
-        instruct_prefix = "instruct"
-        if instruct_prefix.lower() in self.model.lower():
-            ai_prefix="Q: "
-            human_prefix="A: "
-        else:
-            ai_prefix="<bot>: "
-            human_prefix="<human>: "
-        memory = ConversationSummaryBufferMemory(
-            llm=self.llm,
-            max_token_limit=1000,
-            output_key="response",
-            memory_key="history",
-            ai_prefix=ai_prefix,
-            human_prefix=human_prefix,
-        )
-        self.qa = ConversationChain(llm=self.llm, memory=memory, verbose=False)
 
     def promptWrapper(self, text: str):
         return "<human>: " + text + "\n<bot>: "
@@ -208,16 +136,15 @@ class RedpajamaChatBotBase:
             answer = "<bot>: See you soon! Bye!"
             print(f"<bot>: {answer}")
             return answer
-        response = self.qa({"input": self.inputs})
-        answer = (
-            response["response"]
-        )
+        inputs = self.tokenizer.encode(self.inputs, return_tensors="pt").to(self.device)
+        outputs = self.model.generate(inputs, max_new_tokens=400)
+        answer = self.tokenizer.decode(outputs[0])
         # in case, bot fails to answer
         if answer == "":
             answer = self.random_response()
         else:
             answer = answer.replace("\n<human>:", "") #chat
-            answer = answer.replace("\nHuman:", "") #instruct
+            answer = answer.replace("\nUser", "") #instruct
         # print bot response
         self.chat_history.append((f"<human>: {self.inputs}", f"<bot>: {answer}"))
         # logger.info(self.chat_history)
@@ -231,8 +158,8 @@ class RedpajamaChatBotBase:
 
 if __name__ == "__main__":
     # build a ChatBot object
-    bot = RedpajamaChatBotBase()
-    # bot = RedpajamaChatBotBase(model="togethercomputer/RedPajama-INCITE-7B-Chat")
+    bot = SantaCoderChatBotBase()
+    # bot = SantaCoderChatBotBase(gpu=True)
     # start chatting
     while True:
         # receive user input
