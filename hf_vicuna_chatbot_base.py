@@ -73,6 +73,8 @@ class VicunaChatBotBase:
         self.gpu = gpu 
         self.gui_mode = gui_mode
         self.llm = None
+        self.ai_prefix = None
+        self.human_prefix = None
         self.qa = None
         self.chat_history = []
         self.inputs = None
@@ -107,7 +109,7 @@ class VicunaChatBotBase:
 
     def initialize_model(self):
         logger.info("Initializing Model ...")
-        tokenizer = AutoTokenizer.from_pretrained(self.model)
+        tokenizer = AutoTokenizer.from_pretrained(self.model, model_max_length=2048)
 
         if self.gpu:
             model = AutoModelForCausalLM.from_pretrained(self.model, trust_remote_code=True)
@@ -168,15 +170,20 @@ class VicunaChatBotBase:
         #     ai_prefix="Q: "
         #     human_prefix="A: "
         # else:
-        ai_prefix="<bot>: "
-        human_prefix="<human>: "
+        instruct_prefix = "instruct"
+        if instruct_prefix.lower() in self.model.lower():
+            self.ai_prefix="Q: "
+            self.human_prefix="A: "
+        else:
+            self.ai_prefix="<bot>: "
+            self.human_prefix="<human>: "
         memory = ConversationSummaryBufferMemory(
             llm=self.llm,
             max_token_limit=1000,
             output_key="response",
             memory_key="history",
-            ai_prefix=ai_prefix,
-            human_prefix=human_prefix,
+            ai_prefix=self.ai_prefix,
+            human_prefix=self.human_prefix,
         )
         self.qa = ConversationChain(llm=self.llm, memory=memory, verbose=False)
 
@@ -200,6 +207,18 @@ class VicunaChatBotBase:
             time.sleep(1)
             logger.info("\nQuitting ChatBot ...")
             self.inputs = text
+        elif text.lower().strip() in ["reset"]:
+            logger.info("<bot>: reset conversation memory detected.")
+            memory = ConversationSummaryBufferMemory(
+                llm=self.llm,
+                max_token_limit=1000,
+                output_key="response",
+                memory_key="history",
+                ai_prefix=self.ai_prefix,
+                human_prefix=self.human_prefix,
+            )
+            self.qa.memory = memory
+            self.inputs = text
         else:
             self.inputs = text
 
@@ -207,6 +226,11 @@ class VicunaChatBotBase:
         if self.inputs.lower().strip() in ["bye", "quit", "exit"] and self.gui_mode:
             # a closing comment
             answer = "<bot>: See you soon! Bye!"
+            print(f"<bot>: {answer}")
+            return answer
+        if self.inputs.lower().strip() in ["reset"]:
+            # a closing comment
+            answer = "<bot>: Conversation Memory cleared!"
             print(f"<bot>: {answer}")
             return answer
         response = self.qa({"input": self.inputs})
@@ -233,7 +257,6 @@ class VicunaChatBotBase:
 if __name__ == "__main__":
     # build a ChatBot object
     bot = VicunaChatBotBase()
-    # bot = FalconChatBotBase(gpu=True)
     # start chatting
     while True:
         # receive user input

@@ -83,6 +83,8 @@ class RedpajamaChatBot:
         self.gui_mode = gui_mode
         self.llm = None
         self.embedding_llm = None
+        self.ai_prefix = None
+        self.human_prefix = None
         self.qa = None
         self.chat_history = []
         self.inputs = None
@@ -143,7 +145,7 @@ class RedpajamaChatBot:
             search_type="similarity", search_kwargs={"k": target_source_chunks}, max_tokens_limit=1000
         )
 
-        tokenizer = AutoTokenizer.from_pretrained(self.model)
+        tokenizer = AutoTokenizer.from_pretrained(self.model, model_max_length=2048)
         if self.gpu:
             model = AutoModelForCausalLM.from_pretrained(self.model)
             model.half().cuda()
@@ -202,18 +204,18 @@ class RedpajamaChatBot:
         # doc_chain = load_qa_chain(llm=self.llm, chain_type="stuff", prompt=QA_PROMPT)
         instruct_prefix = "instruct"
         if instruct_prefix.lower() in self.model.lower():
-            ai_prefix="Q: "
-            human_prefix="A: "
+            self.ai_prefix="Q: "
+            self.human_prefix="A: "
         else:
-            ai_prefix="<bot>: "
-            human_prefix="<human>: "
+            self.ai_prefix="<bot>: "
+            self.human_prefix="<human>: "
         memory = ConversationSummaryBufferMemory(
             llm=self.llm,
             max_token_limit=1000,
             output_key="answer",
             memory_key="chat_history",
-            ai_prefix=ai_prefix,
-            human_prefix=human_prefix,
+            ai_prefix=self.ai_prefix,
+            human_prefix=self.human_prefix,
         )
 
         self.qa = ConversationalRetrievalChain.from_llm(
@@ -248,6 +250,18 @@ class RedpajamaChatBot:
             time.sleep(1)
             logger.info("\nQuitting ChatBot ...")
             self.inputs = text
+        elif text.lower().strip() in ["reset"]:
+            logger.info("<bot>: reset conversation memory detected.")
+            memory = ConversationSummaryBufferMemory(
+                llm=self.llm,
+                max_token_limit=1000,
+                output_key="answer",
+                memory_key="chat_history",
+                ai_prefix=self.ai_prefix,
+                human_prefix=self.human_prefix,
+            )
+            self.qa.memory = memory
+            self.inputs = text
         else:
             self.inputs = text
 
@@ -255,6 +269,11 @@ class RedpajamaChatBot:
         if self.inputs.lower().strip() in ["bye", "quit", "exit"] and self.gui_mode:
             # a closing comment
             answer = "<bot>: See you soon! Bye!"
+            print(f"<bot>: {answer}")
+            return answer
+        if self.inputs.lower().strip() in ["reset"]:
+            # a closing comment
+            answer = "<bot>: Conversation Memory cleared!"
             print(f"<bot>: {answer}")
             return answer
         response = self.qa({"question": self.inputs})

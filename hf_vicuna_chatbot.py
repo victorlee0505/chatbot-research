@@ -8,29 +8,31 @@ import numpy as np
 import torch
 from langchain import HuggingFacePipeline
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.chains import ConversationChain
+from langchain.chains import ConversationalRetrievalChain
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.memory import ConversationSummaryBufferMemory
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    StoppingCriteria,
-    StoppingCriteriaList,
-    pipeline,
-)
+from langchain.vectorstores import Chroma
+from langchain.chains.chat_vector_db.prompts import QA_PROMPT
+from transformers import (AutoModelForCausalLM, AutoTokenizer,
+                          StoppingCriteria, StoppingCriteriaList, pipeline)
+
+from constants import CHROMA_SETTINGS_HF, PERSIST_DIRECTORY_HF
+from ingest import Ingestion
 
 logger = logging.getLogger(__name__)
 logger.propagate = False
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 handler = logging.StreamHandler(stream=sys.stdout)
-# handler.setLevel(logging.INFO)
+handler.setLevel(logging.INFO)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+persist_directory = PERSIST_DIRECTORY_HF
 target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 4))
 
 # checkpoint
-checkpoint = "togethercomputer/RedPajama-INCITE-Chat-3B-v1"
+checkpoint = "TheBloke/Wizard-Vicuna-7B-Uncensored-HF"
 
 class MyCustomHandler(BaseCallbackHandler):
     def on_llm_start(
@@ -54,27 +56,37 @@ class StoppingCriteriaSub(StoppingCriteria):
                 return True
         return False
 
-stop_words = ["Question:", "<human>:", "Q:", "Human:"]
+
+stop_words = ["Question:", "<human>:", "Q:", "Human:", "</s>"]
+
 
 # A ChatBot class
 # Build a ChatBot class with all necessary modules to make a complete conversation
-class RedpajamaChatBotBase:
+class VicunaChatBot:
     # initialize
     def __init__(
         self,
         model: str = None,
+        load_data: bool = False,
+        show_stream: bool = False,
+        show_source: bool = False,
         show_callback: bool = False,
         gpu: bool = False,
         gui_mode: bool = False,
     ):
         self.model = model
+        self.load_data = load_data
+        self.show_stream = show_stream
+        self.show_source = show_source
         self.show_callback = show_callback
-        self.gpu = gpu 
+        self.gpu = gpu
         self.gui_mode = gui_mode
         self.llm = None
+        self.retriever = None
+        self.embedding_llm = None
+        self.qa = None
         self.ai_prefix = None
         self.human_prefix = None
-        self.qa = None
         self.chat_history = []
         self.inputs = None
         self.end_chat = False
@@ -89,6 +101,7 @@ class RedpajamaChatBotBase:
         if not self.gpu:
             logger.info("Disable CUDA")
             os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+        self.ingest_documents()
         self.initialize_model()
         # some time to get user ready
         time.sleep(2)
@@ -106,13 +119,37 @@ class RedpajamaChatBotBase:
         )
         print("<bot>: " + greeting)
 
+    def ingest_documents(self):
+        offline = True
+        if self.load_data:
+            Ingestion(offline=offline)
+        else:
+            if os.path.exists(persist_directory):
+                if os.listdir(persist_directory):
+                    logger.info(f"Ingestion skipped!")
+                else:
+                    logger.info("PERSIST_DIRECTORY is empty.")
+                    Ingestion(offline=offline)
+            else:
+                logger.info("PERSIST_DIRECTORY does not exist.")
+                Ingestion(offline=offline)
+
     def initialize_model(self):
         logger.info("Initializing Model ...")
-        tokenizer = AutoTokenizer.from_pretrained(self.model, model_max_length=2048)
+        self.embedding_llm = HuggingFaceEmbeddings()
+        db = Chroma(
+            persist_directory=persist_directory,
+            embedding_function=self.embedding_llm,
+            client_settings=CHROMA_SETTINGS_HF,
+        )
+        self.retriever = db.as_retriever(
+            search_type="similarity", search_kwargs={"k": target_source_chunks}, max_tokens_limit=1000
+        )
 
+        tokenizer = AutoTokenizer.from_pretrained(self.model, model_max_length=2048)
         if self.gpu:
             model = AutoModelForCausalLM.from_pretrained(self.model)
-            model = self.model.half().cuda()
+            model.half().cuda()
             torch_dtype = torch.float16
         else:
             model = AutoModelForCausalLM.from_pretrained(self.model)
@@ -120,7 +157,7 @@ class RedpajamaChatBotBase:
 
         if self.gpu:
             stop_words_ids = [
-                tokenizer(stop_word, return_tensors="pt").to('cuda')["input_ids"].squeeze()
+                tokenizer(stop_word, return_tensors="pt").to("cuda")["input_ids"].squeeze()
                 for stop_word in stop_words
             ]
             stopping_criteria = StoppingCriteriaList(
@@ -134,7 +171,6 @@ class RedpajamaChatBotBase:
             stopping_criteria = StoppingCriteriaList(
                 [StoppingCriteriaSub(stops=stop_words_ids)]
             )
-        
         device = torch.device(f"cuda:{torch.cuda.current_device()}" if torch.cuda.is_available() else "cpu")
         pipe = pipeline(
             "text-generation",
@@ -152,18 +188,21 @@ class RedpajamaChatBotBase:
             stopping_criteria=stopping_criteria,
             model_kwargs={"offload_folder": "offload"},
         )
-        
+
         handler = [MyCustomHandler()] if self.show_callback else None
         self.llm = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
 
-        # DEFAULT_TEMPLATE = """The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
+        # self.qa = ConversationalRetrievalChain.from_llm(
+        #     llm=self.llm,
+        #     chain_type="stuff",
+        #     retriever=retriever,
+        #     return_source_documents=self.show_source,
+        # )
 
-        # Current conversation:
-        # {history}
-        # Human: {input}
-        # AI:"""
-        # PROMPT = PromptTemplate(input_variables=["history", "input"], template=DEFAULT_TEMPLATE)
+        # CONDENSE_QUESTION_PROMPT = PromptTemplate.from_template("""<human>: {question}\n<bot>:""")
 
+        # question_generator = LLMChain(llm=self.llm, prompt=CONDENSE_QUESTION_PROMPT)
+        # doc_chain = load_qa_chain(llm=self.llm, chain_type="stuff", prompt=QA_PROMPT)
         instruct_prefix = "instruct"
         if instruct_prefix.lower() in self.model.lower():
             self.ai_prefix="Q: "
@@ -174,12 +213,23 @@ class RedpajamaChatBotBase:
         memory = ConversationSummaryBufferMemory(
             llm=self.llm,
             max_token_limit=1000,
-            output_key="response",
-            memory_key="history",
+            output_key="answer",
+            memory_key="chat_history",
             ai_prefix=self.ai_prefix,
             human_prefix=self.human_prefix,
         )
-        self.qa = ConversationChain(llm=self.llm, memory=memory, verbose=False)
+
+        self.qa = ConversationalRetrievalChain.from_llm(
+            llm=self.llm,
+            chain_type="stuff",
+            retriever=self.retriever,
+            memory=memory,
+            combine_docs_chain_kwargs={"prompt": QA_PROMPT},
+            get_chat_history=lambda h: h,
+            return_source_documents=self.show_source,
+        )
+
+        # self.qa = ConversationalRetrievalChain(retriever=retriever, combine_docs_chain=doc_chain, question_generator=question_generator, return_source_documents= self.show_source)
 
     def promptWrapper(self, text: str):
         return "<human>: " + text + "\n<bot>: "
@@ -206,8 +256,8 @@ class RedpajamaChatBotBase:
             memory = ConversationSummaryBufferMemory(
                 llm=self.llm,
                 max_token_limit=1000,
-                output_key="response",
-                memory_key="history",
+                output_key="answer",
+                memory_key="chat_history",
                 ai_prefix=self.ai_prefix,
                 human_prefix=self.human_prefix,
             )
@@ -227,20 +277,25 @@ class RedpajamaChatBotBase:
             answer = "<bot>: Conversation Memory cleared!"
             print(f"<bot>: {answer}")
             return answer
-        response = self.qa({"input": self.inputs})
-        answer = (
-            response["response"]
+        response = self.qa({"question": self.inputs})
+        answer, docs = (
+            response["answer"],
+            response["source_documents"] if self.show_source else [],
         )
         # in case, bot fails to answer
         if answer == "":
             answer = self.random_response()
         else:
-            answer = answer.replace("\n<human>:", "") #chat
-            answer = answer.replace("\nHuman:", "") #instruct
+            answer = answer.replace("\n<human>:", "")
         # print bot response
         self.chat_history.append((f"<human>: {self.inputs}", f"<bot>: {answer}"))
         # logger.info(self.chat_history)
         print(f"<bot>: {answer}")
+        if self.show_source:
+            for document in docs:
+                print(f"<bot>: source_documents")
+                print("\n> " + document.metadata["source"] + ":")
+                print(document.page_content)
         return answer
 
     # in case there is no response from model
@@ -250,8 +305,8 @@ class RedpajamaChatBotBase:
 
 if __name__ == "__main__":
     # build a ChatBot object
-    bot = RedpajamaChatBotBase()
-    # bot = RedpajamaChatBotBase(model="togethercomputer/RedPajama-INCITE-7B-Chat")
+    bot = VicunaChatBot()
+    # bot = VicunaChatBot(show_source=True, show_callback=True)
     # start chatting
     while True:
         # receive user input
