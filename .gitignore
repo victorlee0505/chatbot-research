@@ -3,3 +3,5 @@ __pycache__/
 offload/
 storage_azure/
 storage_hf/
+temp/
+tmp/

@@ -1,10 +1,12 @@
 openai
 llama_index
 langchain
+transformers
+wheel
+azure-search-documents --pre
 lxml
 pypdf
 unstructured
-transformers
 accelerate
 streamlit
 streamlit-chat 
@@ -14,3 +16,4 @@ faiss-cpu
 azure-identity
 azure-search-documents
 einops
+ninja

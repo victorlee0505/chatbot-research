@@ -237,6 +237,8 @@ class Ingestion:
             print("No new documents to load")
             return None
         print(f"Loaded {len(documents)} new documents from {self.source_path}")
+        if self.offline:
+            chunk_size = 1000
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
@@ -370,15 +372,17 @@ class Ingestion:
 if __name__ == "__main__":
 
     # overiding default source path
-    base_path = "C:\\path\\to\\your\\data"
+    # base_path = "C:\\path\\to\\your\\data"
+    base_path = "C:\\Users\\LeeVic\\workspace\\openai\\chatbot-research\\temp"
 
     # Offline
     # ingest = Ingestion(offline=True, source_path=base_path)
-    # ingest = Ingestion(offline=True, gpu=True, source_path=base_path)
+    ingest = Ingestion(offline=True, gpu=True, source_path=base_path)
 
     # Azure Open AI
     # ingest = Ingestion(offline=False)
+    # ingest = Ingestion(offline=False, source_path=base_path)
 
     # OpenAI
-    ingest = Ingestion(offline=False, openai=True)
+    # ingest = Ingestion(offline=False, openai=True)
 

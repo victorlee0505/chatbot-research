@@ -8,13 +8,8 @@ from typing import Dict, Union, Any, List
 import numpy as np
 import torch
 from langchain import HuggingFacePipeline
-from langchain.chains.base import Chain
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import LLMChain, create_tagging_chain_pydantic
-from langchain.chains.openai_functions.utils import _convert_schema, get_llm_kwargs
-from langchain.output_parsers.openai_functions import PydanticOutputFunctionsParser
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema.language_model import BaseLanguageModel
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -22,9 +17,11 @@ from transformers import (
     StoppingCriteriaList,
     pipeline,
 )
+from langchain.prompts import ChatPromptTemplate
 
 from PersonalDetails import PersonalDetails
 
+# os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"]="python"
 logger = logging.getLogger(__name__)
 logger.propagate = False
 logger.setLevel(logging.INFO)
@@ -37,7 +34,7 @@ logger.addHandler(handler)
 target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 4))
 
 # checkpoint
-checkpoint = "togethercomputer/RedPajama-INCITE-Chat-3B-v1"
+checkpoint = "TheBloke/Wizard-Vicuna-7B-Uncensored-HF"
 
 class MyCustomHandler(BaseCallbackHandler):
     def on_llm_start(
@@ -61,11 +58,11 @@ class StoppingCriteriaSub(StoppingCriteria):
                 return True
         return False
 
-stop_words = ["Question:", "<human>:", "Q:", "Human:"]
+stop_words = ["Question:", "<human>:", "Q:", "Human:", "</s>"]
 
 # A ChatBot class
 # Build a ChatBot class with all necessary modules to make a complete conversation
-class RedpajamaChatBotForm:
+class VicunaChatBotForm:
     # initialize
     def __init__(
         self,
@@ -87,7 +84,6 @@ class RedpajamaChatBotForm:
         self.inputs = None
         self.end_chat = False
         self.user_details = user_details
-        self.temp = None
         # greet while starting
         if self.model is None or len(self.model) == 0:
             self.model = checkpoint
@@ -115,8 +111,10 @@ class RedpajamaChatBotForm:
         # Greet and introduce
         greeting = np.random.choice(
             [
-                "Welcome, I am ChatBot to help you fill in a form.",
-                "Hey, Great day! I am your virtual assistant to help you fill in a form.",
+                "Welcome, I am ChatBot, here for your kind service",
+                "Hey, Great day! I am your virtual assistant",
+                "Hello, it's my pleasure meeting you",
+                "Hi, I am a ChatBot. Let's chat!",
             ]
         )
         print("<bot>: " + greeting)
@@ -126,12 +124,11 @@ class RedpajamaChatBotForm:
         tokenizer = AutoTokenizer.from_pretrained(self.model, model_max_length=2048)
 
         if self.gpu:
-            model = AutoModelForCausalLM.from_pretrained(self.model)
-            model = model.half().cuda()
+            model = AutoModelForCausalLM.from_pretrained(self.model, trust_remote_code=True)
+            # model = self.model.half().cuda()
             torch_dtype = torch.float16
         else:
-            model = AutoModelForCausalLM.from_pretrained(self.model)
-            self.temp = model
+            model = AutoModelForCausalLM.from_pretrained(self.model, trust_remote_code=True)
             torch_dtype = torch.bfloat16
 
         if self.gpu:
@@ -157,9 +154,9 @@ class RedpajamaChatBotForm:
             model=model,
             tokenizer=tokenizer,
             max_new_tokens=400,
-            temperature=0.01,
-            # top_p=0.7,
-            # top_k=50,
+            temperature=0.7,
+            top_p=0.7,
+            top_k=50,
             pad_token_id=tokenizer.eos_token_id,
             device=device,
             # device_map="auto",
@@ -168,7 +165,7 @@ class RedpajamaChatBotForm:
             stopping_criteria=stopping_criteria,
             model_kwargs={"offload_folder": "offload"},
         )
-        
+
         handler = [MyCustomHandler()] if self.show_callback else None
         self.llm = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
 
@@ -180,28 +177,20 @@ class RedpajamaChatBotForm:
         # AI:"""
         # PROMPT = PromptTemplate(input_variables=["history", "input"], template=DEFAULT_TEMPLATE)
 
-        PROMPT = ChatPromptTemplate.from_template(
-            "<human>: Below is are some things to ask the user for in a coversation way. you should only ask one question at a time even if you don't get all the info \
-            don't ask as a list! Don't greet the user! Don't say Hi! Explain you need to get some info. If the ask_for list is empty then thank them and ask how you can help them \n\n \
-            ### ask_for list: {ask_for} \
-            <bot>:"
-        )
         # instruct_prefix = "instruct"
         # if instruct_prefix.lower() in self.model.lower():
-        #     self.ai_prefix="Q: "
-        #     self.human_prefix="A: "
+        #     ai_prefix="Q: "
+        #     human_prefix="A: "
         # else:
-        #     self.ai_prefix="<bot>: "
-        #     self.human_prefix="<human>: "
-        # memory = ConversationSummaryBufferMemory(
-        #     llm=self.llm,
-        #     max_token_limit=1000,
-        #     output_key="response",
-        #     memory_key="history",
-        #     ai_prefix=self.ai_prefix,
-        #     human_prefix=self.human_prefix,
-        # )
-        self.qa = LLMChain(llm=self.llm, prompt=PROMPT)
+
+        PROMPT = ChatPromptTemplate.from_template(
+            "USER: Below is are some things to ask the user for in a coversation way. you should only ask one question at a time even if you don't get all the info \
+            don't ask as a list! Don't greet the user! Don't say Hi.Explain you need to get some info. If the ask_for list is empty then thank them and ask how you can help them \n\n \
+            ### ask_for list: {ask_for}\
+            ASSISTANT:"
+        )
+
+        self.qa = LLMChain(llm=self.llm, prompt=PROMPT, verbose=False)
 
     def promptWrapper(self, text: str):
         return "<human>: " + text + "\n<bot>: "
@@ -220,48 +209,8 @@ class RedpajamaChatBotForm:
         updated_details = current_details.copy(update=non_empty_details)
         return updated_details
     
-    def get_tagging_function(self, schema: dict) -> dict:
-        return {
-            "name": "information_extraction",
-            "description": "Extracts the relevant information from the passage.",
-            "parameters": _convert_schema(schema),
-        }
-
-
-
-    
-    def create_tagging_chain_pydantic_mod(self,
-        pydantic_schema: Any, llm: BaseLanguageModel
-    ) -> Chain:
-        """Creates a chain that extracts information from a passage.
-
-        Args:
-            pydantic_schema: The pydantic schema of the entities to extract.
-            llm: The language model to use.
-
-        Returns:
-            Chain (LLMChain) that can be used to extract information from a passage.
-        """
-        TAGGING_TEMPLATE = """<human>: Extract the desired information from the following passage.
-
-        Passage:
-        {input}
-        <bot>:
-        """
-        openai_schema = pydantic_schema.schema()
-        function = self.get_tagging_function(openai_schema)
-        prompt = ChatPromptTemplate.from_template(TAGGING_TEMPLATE)
-        output_parser = PydanticOutputFunctionsParser(pydantic_schema=pydantic_schema)
-        llm_kwargs = get_llm_kwargs(function)
-        chain = LLMChain(
-            llm=llm,
-            prompt=prompt,
-            llm_kwargs=llm_kwargs,
-            output_parser=output_parser,
-        )
-        return chain
     def filter_response(self, text_input, user_details):
-        chain = self.create_tagging_chain_pydantic_mod(PersonalDetails, self.qa)
+        chain = create_tagging_chain_pydantic(PersonalDetails, self.llm)
         res = chain.run(text_input)
         # add filtered info to the
         user_details = self.add_non_empty_details(user_details,res)
@@ -307,19 +256,17 @@ class RedpajamaChatBotForm:
         self.user_details = new_user_details
         if ask_for:
             ai_response = self.ask_for_info(ask_for)
-            print(ai_response)
         else:
             print('Everything gathered, generating form.\n')
             self.generate_form()
             self.end_chat = True
             ai_response = "Form generated, goodbye!"
-
         # in case, bot fails to answer
         if ai_response == "":
             ai_response = self.random_response()
         else:
-            ai_response = ai_response.replace("<human>:", "") #chat
-            ai_response = ai_response.replace("\nHuman:", "") #instruct
+            ai_response = ai_response.replace("\n<human>:", "") #chat
+            ai_response = ai_response.replace("\nUser", "") #instruct
         # print bot response
         self.chat_history.append((f"<human>: {self.inputs}", f"<bot>: {ai_response}"))
         # logger.info(self.chat_history)
@@ -333,8 +280,7 @@ class RedpajamaChatBotForm:
 
 if __name__ == "__main__":
     # build a ChatBot object
-    bot = RedpajamaChatBotForm(show_callback=True)
-    # bot = RedpajamaChatBotBase(model="togethercomputer/RedPajama-INCITE-7B-Chat")
+    bot = VicunaChatBotForm()
     # start chatting
     first_prompt = bot.ask_for_info()
     print(f"<bot>: {first_prompt}")

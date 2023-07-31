@@ -136,7 +136,13 @@ class VicunaChatBotBase:
                 [StoppingCriteriaSub(stops=stop_words_ids)]
             )
         
-        device = torch.device(f"cuda:{torch.cuda.current_device()}" if torch.cuda.is_available() else "cpu")
+        logger.info(f"Initializing Model ... cuda {torch.cuda.current_device()}")
+        logger.info(f"Initializing Model ... cuda {torch.cuda.is_available()}")
+
+        if not self.gpu:
+            device=torch.device('cpu')
+        else:
+            device = torch.device(f"cuda:{torch.cuda.current_device()}" if torch.cuda.is_available() else "cpu")
         pipe = pipeline(
             "text-generation",
             model=model,
