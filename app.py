@@ -6,16 +6,24 @@ from streamlit_chat import message
 
 from azure_chatbot import AzureOpenAiChatBot
 from azure_chatbot_base import AzureOpenAiChatBotBase
+from hf_chatbot_base import HuggingFaceChatBotBase
+from hf_chatbot_chroma import HuggingFaceChatBotChroma
+from hf_llm_config import REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B
 from openai_chatbot import OpenAiChatBot
 from hf_redpajama_chatbot import RedpajamaChatBot
 from hf_redpajama_chatbot_base import RedpajamaChatBotBase
-from persist import load_widget_state, persist
-from ui_constants import CHAT_ONLY, CLOSED, KILL_MESSAGE, OPEN, REDPAJAMA_CHAT_3B, REDPAJAMA_CHAT_7B
+from app_persist import load_widget_state, persist
+from app_ui_constants import CHAT_ONLY, CLOSED, OPEN, REDPAJAMA_CHAT_3B_CONSTANT
 
 st.set_page_config(
         page_title="ChatBot-research",
         page_icon="👋",
     )
+
+llm_options = {
+    "RedPajama 3B": REDPAJAMA_3B,
+    "Vicuna 7B": VICUNA_7B,
+}
 
 def main():
     print("run main()")
@@ -29,8 +37,8 @@ def main():
             "options": ["Hello", "Everyone", "Happy", "Streamlit-ing"],
             "chat_mode_azure_options": [CHAT_ONLY, CLOSED, OPEN],
             "chat_mode_openai_options": [CLOSED],
-            "chat_mode_redpajama_options": [CHAT_ONLY, OPEN],
-            "chat_model_redpajama_options": [REDPAJAMA_CHAT_3B, REDPAJAMA_CHAT_7B],
+            "chat_mode_hf_options": [CHAT_ONLY, OPEN],
+            # "chat_model_hf_options": [REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B],
 
             # Default widget values.
             "text": "",
@@ -43,22 +51,19 @@ def main():
             "chat_bot_azure": None,
             "chat_mode_azure": CHAT_ONLY,
             "chat_start_azure": False,
-            "prompt_azure": [],
-            "completion_azure": [],
+            "chat_azure": [],
 
             "chat_bot_openai": None,
             "chat_mode_openai": CLOSED,
             "chat_start_openai": False,
-            "prompt_openai": [],
-            "completion_openai": [],
+            "chat_openai": [],
 
-            "chat_bot_redpajama": None,
-            "chat_mode_redpajama": CHAT_ONLY,
-            "chat_start_redpajama": False,
-            "chat_model_redpajama": REDPAJAMA_CHAT_3B,
-            "chat_gpu_redpajama": False,
-            "prompt_redpajama": [],
-            "completion_redpajama": [],
+            "chat_bot_hf": None,
+            "chat_mode_hf": CHAT_ONLY,
+            "chat_start_hf": False,
+            "chat_model_hf": REDPAJAMA_CHAT_3B_CONSTANT,
+            "chat_gpu_hf": False,
+            "chat_hf": [],
         })
 
     page = st.sidebar.radio("Select your page", tuple(PAGES.keys()), format_func=str.capitalize, key="sidebar")
@@ -108,10 +113,10 @@ def page_settings():
         Redpajama Chatbot Status values
         ---------------
 
-        - **chat_mode_redpajama**: `{st.session_state.chat_mode_redpajama}`
-        - **chat_start_redpajama**: `{st.session_state.chat_start_redpajama}`
-        - **chat_model_redpajama**: `{st.session_state.chat_model_redpajama}`
-        - **chat_gpu_redpajama**: `{st.session_state.chat_gpu_redpajama}`
+        - **chat_mode_hf**: `{st.session_state.chat_mode_hf}`
+        - **chat_start_hf**: `{st.session_state.chat_start_hf}`
+        - **chat_model_hf**: `{st.session_state.chat_model_hf}`
+        - **chat_gpu_hf**: `{st.session_state.chat_gpu_hf}`
         """
     )
 
@@ -123,8 +128,8 @@ def page_azure():
         st.session_state["chat_mode_azure"] = CHAT_ONLY
         del st.session_state["chat_bot_azure"]
         st.session_state["chat_bot_azure"] = None
-        st.session_state["prompt_azure"] = []
-        st.session_state["completion_azure"] = []
+        st.session_state["chat_azure"] = []
+        st.session_state["chat_azure"] = []
         gc.collect()
 
     st.button("Reset Chatbot", on_click=callback_reset)
@@ -159,34 +164,29 @@ def page_azure():
         start = st.button("Start", on_click=callback)
 
     def run():
-        # container for chat history
-        response_container = st.container()
-        # container for text box
-        container = st.container()
 
         chatbot = st.session_state["chat_bot_azure"]
 
-        with container:
-            with st.form(key="my_form", clear_on_submit=True):
-                user_input = st.text_area("You:", key="input", height=100)
-                submit_button = st.form_submit_button(label="Send")
+        ################################################################
 
-            if submit_button and user_input:
-                chatbot.user_input(prompt=user_input)
-                output = chatbot.bot_response()
-                print(f"output: {output}")
-                st.session_state["prompt_azure"].append(user_input)
-                st.session_state["completion_azure"].append(output)
+        for message in st.session_state["chat_azure"]:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
-        if st.session_state["completion_azure"]:
-            with response_container:
-                for i in range(len(st.session_state["completion_azure"])):
-                    message(
-                        st.session_state["prompt_azure"][i],
-                        is_user=True,
-                        key=str(i) + "_user",
-                    )
-                    message(st.session_state["completion_azure"][i], key=str(i))
+        if prompt := st.chat_input("How may I help you?"):
+            st.session_state["chat_azure"].append({"role": "user", "content": prompt})
+            chatbot.user_input(prompt=prompt)
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
+                full_response = chatbot.bot_response()
+                message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+            st.session_state["chat_azure"].append({"role": "assistant", "content": full_response})
+
+        #################################################################
 
     if "chat_start_azure" not in st.session_state:
         if st.session_state["chat_bot_azure"] is not None:
@@ -233,8 +233,7 @@ def page_openai():
         st.session_state["chat_mode_openai"] = CLOSED
         del st.session_state["chat_bot_openai"]
         st.session_state["chat_bot_openai"] = None
-        st.session_state["prompt_openai"] = []
-        st.session_state["completion_openai"] = []
+        st.session_state["chat_openai"] = []
         gc.collect()
 
     st.button("Reset Chatbot", on_click=callback_reset)
@@ -264,34 +263,29 @@ def page_openai():
         start = st.button("Start", on_click=callback)
 
     def run():
-        # container for chat history
-        response_container = st.container()
-        # container for text box
-        container = st.container()
 
         chatbot = st.session_state["chat_bot_openai"]
 
-        with container:
-            with st.form(key="my_form", clear_on_submit=True):
-                user_input = st.text_area("You:", key="input", height=100)
-                submit_button = st.form_submit_button(label="Send")
+        ################################################################
 
-            if submit_button and user_input:
-                chatbot.user_input(prompt=user_input)
-                output = chatbot.bot_response()
-                print(f"output: {output}")
-                st.session_state["prompt_openai"].append(user_input)
-                st.session_state["completion_openai"].append(output)
+        for message in st.session_state["chat_openai"]:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
-        if st.session_state["completion_openai"]:
-            with response_container:
-                for i in range(len(st.session_state["completion_openai"])):
-                    message(
-                        st.session_state["prompt_openai"][i],
-                        is_user=True,
-                        key=str(i) + "_user",
-                    )
-                    message(st.session_state["completion_openai"][i], key=str(i))
+        if prompt := st.chat_input("How may I help you?"):
+            st.session_state["chat_openai"].append({"role": "user", "content": prompt})
+            chatbot.user_input(prompt=prompt)
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
+                full_response = chatbot.bot_response()
+                message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+            st.session_state["chat_openai"].append({"role": "assistant", "content": full_response})
+
+        #################################################################
 
     if "chat_start_openai" not in st.session_state:
         if st.session_state["chat_bot_openai"] is not None:
@@ -321,24 +315,24 @@ def page_openai():
             home()
 
 def page_repajama():
+
     def callback_reset():
         print("callback_reset")
-        st.session_state["chat_start_redpajama"] = False
-        st.session_state["chat_mode_redpajama"] = CHAT_ONLY
-        st.session_state["chat_model_redpajama"] = REDPAJAMA_CHAT_3B
-        st.session_state["chat_gpu_redpajama"] = False
-        del st.session_state["chat_bot_redpajama"]
-        st.session_state["chat_bot_redpajama"] = None
-        st.session_state["prompt_redpajama"] = []
-        st.session_state["completion_redpajama"] = []
+        st.session_state["chat_start_hf"] = False
+        st.session_state["chat_mode_hf"] = CHAT_ONLY
+        st.session_state["chat_model_hf"] = REDPAJAMA_CHAT_3B_CONSTANT
+        st.session_state["chat_gpu_hf"] = False
+        del st.session_state["chat_bot_hf"]
+        st.session_state["chat_bot_hf"] = None
+        st.session_state["chat_hf"] = []
         gc.collect()
 
     st.button("Reset Chatbot", on_click=callback_reset)
 
     def callback():
         print("callback")
-        if st.session_state["chat_mode_redpajama"] in st.session_state["chat_mode_redpajama_options"]:
-            st.session_state["chat_start_redpajama"] = True
+        if st.session_state["chat_mode_hf"] in st.session_state["chat_mode_hf_options"]:
+            st.session_state["chat_start_hf"] = True
 
     def home():
         st.markdown(
@@ -348,7 +342,7 @@ def page_repajama():
 
         ##### Model?
         - 3B: a model that can be run with 16GB system memory or at least 8GB VRAM with CUDA
-        - 7B: a model that can be run with 32GB system memory or at least 16GB VRAM with CUDA
+        - 7B: a model that can be run with 40GB system memory or at least 16GB VRAM with CUDA
 
         ##### CUDA (Nvidia GPU acceleration) (if you don't know what is this, leave it un-checked)?
         - Default: False
@@ -366,76 +360,69 @@ def page_repajama():
         )
         # Define the columns
 
-
         # Add a radio button to the first column
 
-        st.selectbox("Choose a LLM model:", st.session_state["chat_model_redpajama_options"], key=persist("chat_model_redpajama"))
+        st.selectbox("Choose a LLM model:", llm_options.keys(), key=persist("chat_model_hf"))
         # Add a checkbox to the second column
 
-        st.checkbox("CUDA", key=persist("chat_gpu_redpajama"))
-        st.radio("Choose a chat mode:", st.session_state["chat_mode_redpajama_options"], key=persist("chat_mode_redpajama"))
+        st.checkbox("CUDA", key=persist("chat_gpu_hf"))
+        st.radio("Choose a chat mode:", st.session_state["chat_mode_hf_options"], key=persist("chat_mode_hf"))
         start = st.button("Start", on_click=callback)
         if start:
             print("start clicked")
 
     def run():
-        # container for chat history
-        response_container = st.container()
-        # container for text box
-        container = st.container()
+        chatbot = st.session_state["chat_bot_hf"]
 
-        chatbot = st.session_state["chat_bot_redpajama"]
+        ################################################################
 
-        with container:
-            with st.form(key="my_form", clear_on_submit=True):
-                user_input = st.text_area("You:", key="input", height=100)
-                submit_button = st.form_submit_button(label="Send")
+        for message in st.session_state["chat_hf"]:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
-            if submit_button and user_input:
-                chatbot.user_input(prompt=user_input)
-                output = chatbot.bot_response()
-                print(f"output: {output}")
-                st.session_state["prompt_redpajama"].append(user_input)
-                st.session_state["completion_redpajama"].append(output)
+        if prompt := st.chat_input("How may I help you?"):
+            st.session_state["chat_hf"].append({"role": "user", "content": prompt})
+            chatbot.user_input(prompt=prompt)
+            with st.chat_message("user"):
+                st.markdown(prompt)
 
-        if st.session_state["completion_redpajama"]:
-            with response_container:
-                for i in range(len(st.session_state["completion_redpajama"])):
-                    message(
-                        st.session_state["prompt_redpajama"][i],
-                        is_user=True,
-                        key=str(i) + "_user",
-                    )
-                    message(st.session_state["completion_redpajama"][i], key=str(i))
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
+                full_response = chatbot.bot_response()
+                message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+            st.session_state["chat_hf"].append({"role": "assistant", "content": full_response})
 
-    if "chat_start_redpajama" not in st.session_state:
-        if st.session_state["chat_bot_redpajama"] is not None:
-            st.session_state["chat_start_redpajama"] = True
+        #################################################################
+
+    if "chat_start_hf" not in st.session_state:
+        if st.session_state["chat_bot_hf"] is not None:
+            st.session_state["chat_start_hf"] = True
         else:
-            st.session_state["chat_start_redpajama"] = False
+            st.session_state["chat_start_hf"] = False
             
-    if st.session_state["chat_start_redpajama"] == False:
+    if st.session_state["chat_start_hf"] == False:
         print("Welcome to Redpajama Chatbot")
         home()
     else:
         print("Starting Redpajama Chatbot")
-        if st.session_state["chat_mode_redpajama"] is not None:
-            print(st.session_state["chat_mode_redpajama"])
+        if st.session_state["chat_mode_hf"] is not None:
+            print(st.session_state["chat_mode_hf"])
             # try to load model
             if (
-                st.session_state["chat_mode_redpajama"] == CHAT_ONLY
-                and st.session_state["chat_bot_redpajama"] is None
+                st.session_state["chat_mode_hf"] == CHAT_ONLY
+                and st.session_state["chat_bot_hf"] is None
             ):
-                st.session_state["chat_bot_redpajama"] = RedpajamaChatBotBase(model=st.session_state["chat_model_redpajama"], gpu= st.session_state["chat_gpu_redpajama"] ,gui_mode=True)
+                st.session_state["chat_bot_hf"] = HuggingFaceChatBotBase(llm_config=llm_options.get(st.session_state["chat_model_hf"]), gpu= st.session_state["chat_gpu_hf"], gui_mode=True)
                 print(f"Redpajama Chatbot: {CHAT_ONLY}")
-            elif (st.session_state["chat_mode_redpajama"] == OPEN
-                and st.session_state["chat_bot_redpajama"] is None
+            elif (st.session_state["chat_mode_hf"] == OPEN
+                and st.session_state["chat_bot_hf"] is None
             ):
-                st.session_state["chat_bot_redpajama"] = RedpajamaChatBot(model=st.session_state["chat_model_redpajama"], gpu= st.session_state["chat_gpu_redpajama"], gui_mode=True)
+                st.session_state["chat_bot_hf"] = HuggingFaceChatBotChroma(llm_config=llm_options.get(st.session_state["chat_model_hf"]), gpu= st.session_state["chat_gpu_hf"], gui_mode=True)
                 print(f"Redpajama Chatbot: {OPEN}")
             else:
-                if st.session_state["chat_bot_redpajama"] is None:
-                    st.session_state["chat_bot_redpajama"] = RedpajamaChatBotBase(model=st.session_state["chat_model_redpajama"], gpu= st.session_state["chat_gpu_redpajama"], gui_mode=True)
+                if st.session_state["chat_bot_hf"] is None:
+                    st.session_state["chat_bot_hf"] = HuggingFaceChatBotBase(llm_config=llm_options.get(st.session_state["chat_model_hf"]), gpu= st.session_state["chat_gpu_hf"], gui_mode=True)
             run()
         else:
             home()

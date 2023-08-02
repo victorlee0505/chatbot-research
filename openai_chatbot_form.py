@@ -14,7 +14,7 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.vectorstores import Chroma
 from PersonalDetails import PersonalDetails
 
-from constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
+from ingest_constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
 from ingest import Ingestion
 
 logger = logging.getLogger(__name__)

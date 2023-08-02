@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 import logging
 import os
 import sys
@@ -10,6 +11,8 @@ from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import ConversationChain
 from langchain.chat_models import AzureChatOpenAI
 from langchain.memory import ConversationSummaryBufferMemory
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 logger.propagate = False

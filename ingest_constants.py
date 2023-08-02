@@ -6,14 +6,14 @@ PERSIST_DIRECTORY_HF = './storage_hf'
 
 # Define the Chroma settings ONLINE Azure ingest
 CHROMA_SETTINGS_AZURE = Settings(
-        chroma_db_impl='duckdb+parquet',
+        # chroma_db_impl='duckdb+parquet',
         persist_directory=PERSIST_DIRECTORY_AZURE,
         anonymized_telemetry=False
 )
 
 # Define the Chroma settings for OFFLINE HuggingFace ingest
 CHROMA_SETTINGS_HF = Settings(
-        chroma_db_impl='duckdb+parquet',
+        # chroma_db_impl='duckdb+parquet',
         persist_directory=PERSIST_DIRECTORY_HF,
         anonymized_telemetry=False
 )

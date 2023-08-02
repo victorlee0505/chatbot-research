@@ -4,6 +4,7 @@ import os
 import sys
 from multiprocessing import Pool
 from typing import List
+import chromadb
 
 import openai
 import pandas as pd
@@ -29,8 +30,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
 from tqdm import tqdm
 
-import code_text_splitter
-from constants import (
+import ingest_code_text_splitter
+from ingest_constants import (
     CHROMA_SETTINGS_AZURE,
     CHROMA_SETTINGS_HF,
     PERSIST_DIRECTORY_AZURE,
@@ -49,9 +50,8 @@ persist_directory_hf = PERSIST_DIRECTORY_HF
 chroma_setting_azure = CHROMA_SETTINGS_AZURE
 chroma_setting_hf = CHROMA_SETTINGS_HF
 source_directory = "./source_documents"
-chunk_size = 500
-chunk_overlap = 10
-
+chunk_size = 1000
+chunk_overlap = 20
 
 # Custom document loaders
 class MyElmLoader(UnstructuredEmailLoader):
@@ -191,8 +191,8 @@ class Ingestion:
             return []
         try:
             with open(file_path, encoding="utf-8") as f:
-                texts = code_text_splitter.codeTextSplitter(
-                    language=code_text_splitter.get_language(ext),
+                texts = ingest_code_text_splitter.codeTextSplitter(
+                    language=ingest_code_text_splitter.get_language(ext),
                     chunk_size=chunk_size,
                     chunk_overlap=chunk_overlap,
                     documents=f.read(),
@@ -223,7 +223,7 @@ class Ingestion:
                     results.extend(docs)
                     pbar.update()
         print(
-            f"Split into {len(results)} chunks of text (max. {chunk_size} tokens each)"
+            f"Split into {len(results)} chunks of text (max. {chunk_size} char each)"
         )
         return results
 
@@ -237,13 +237,13 @@ class Ingestion:
             print("No new documents to load")
             return None
         print(f"Loaded {len(documents)} new documents from {self.source_path}")
-        if self.offline:
-            chunk_size = 1000
+        # if self.offline:
+        #     chunk_size = 1000
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
         texts = text_splitter.split_documents(documents)
-        print(f"Split into {len(texts)} chunks of text (max. {chunk_size} tokens each)")
+        print(f"Split into {len(texts)} chunks of text (max. {chunk_size} char each)")
         return texts
 
     def does_vectorstore_exist(self, persist_directory: str) -> bool:
@@ -275,14 +275,16 @@ class Ingestion:
             if not self.gpu:
                 print("Disable CUDA")
                 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+                torch.device('cpu')
             embeddings = HuggingFaceEmbeddings()
             self.chroma_setting = CHROMA_SETTINGS_HF
             self.persist_directory = persist_directory_hf
         else:
             if not self.openai:
                 openai.api_type = "azure"
-                openai.api_base = os.getenv("OPENAI_AZURE_BASE_URL")
-                openai.api_version = "2023-05-15"
+                openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")
+                openai.api_base = os.getenv("AZURE_OPENAI_BASE_URL")
+                openai.api_version = os.getenv("AZURE_OPENAI_API_VERSION")
                 print("Azure Embedding")
                 embeddings = OpenAIEmbeddings(
                     model="text-embedding-ada-002",
@@ -302,15 +304,15 @@ class Ingestion:
             self.chroma_setting = CHROMA_SETTINGS_AZURE
             self.persist_directory = persist_directory_azure
 
+        client = chromadb.PersistentClient(settings=self.chroma_setting, path=self.persist_directory)
         if self.does_vectorstore_exist(self.persist_directory):
             # Update and store locally vectorstore
             print(
                 f"Documents: Appending to existing vectorstore at {self.persist_directory}"
             )
             db = Chroma(
-                persist_directory=self.persist_directory,
+                client=client,
                 embedding_function=embeddings,
-                client_settings=self.chroma_setting,
             )
             collection = db.get()
             texts = self.process_documents(
@@ -328,12 +330,10 @@ class Ingestion:
             if texts:
                 print(f"Documents: Creating embeddings. May take some minutes...")
                 db = Chroma.from_documents(
-                    texts,
-                    embeddings,
-                    persist_directory=self.persist_directory,
-                    client_settings=self.chroma_setting,
+                    client=client,
+                    documents=texts,
+                    embedding=embeddings,
                 )
-        db.persist()
         db = None
         print(f"Documents: Ingestion complete!")
 
@@ -343,9 +343,8 @@ class Ingestion:
                 f"Code: Appending to existing vectorstore at {self.persist_directory}"
             )
             db = Chroma(
-                persist_directory=self.persist_directory,
+                client=client,
                 embedding_function=embeddings,
-                client_settings=self.chroma_setting,
             )
             collection = db.get()
             texts = self.process_code()
@@ -359,12 +358,10 @@ class Ingestion:
             if texts:
                 print(f"Code: Creating embeddings. May take some minutes...")
                 db = Chroma.from_documents(
-                    texts,
-                    embeddings,
-                    persist_directory=self.persist_directory,
-                    client_settings=self.chroma_setting,
+                    client=client,
+                    documents=texts,
+                    embedding=embeddings,
                 )
-        db.persist()
         db = None
         print(f"Code: Ingestion complete!")
 

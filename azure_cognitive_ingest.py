@@ -29,7 +29,7 @@ from tqdm import tqdm
 
 from azure_cognitive_search import AzureCognitiveSearch
 
-from constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
+from ingest_constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
 
 openai.api_type = "azure"
 openai.api_base = os.getenv(

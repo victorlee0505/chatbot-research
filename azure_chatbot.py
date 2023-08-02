@@ -15,7 +15,7 @@ from langchain.llms import AzureOpenAI
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.vectorstores import Chroma
 
-from constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
+from ingest_constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
 from ingest import Ingestion
 
 logger = logging.getLogger(__name__)
