@@ -33,11 +33,11 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 
 For Azure OpenAI
 ```
-OPENAI_API_KEY
+AZURE_OPENAI_API_KEY
 
-OPENAI_AZURE_BASE_URL
+AZURE_OPENAI_BASE_URL
 
-OPENAI_DEPLOYMENT_NAME
+AZURE_OPENAI_DEPLOYMENT_NAME
 ```
 
 For OpenAI

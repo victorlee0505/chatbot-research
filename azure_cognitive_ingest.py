@@ -33,14 +33,14 @@ from constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
 
 openai.api_type = "azure"
 openai.api_base = os.getenv(
-    "OPENAI_AZURE_BASE_URL"
+    "AZURE_OPENAI_BASE_URL"
 )  # your endpoint should look like the following https://YOUR_RESOURCE_NAME.openai.azure.com/
-openai.api_version = "2023-05-15"  # this may change in the future
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_version = os.getenv("AZURE_OPENAI_API_VERSION")  # this may change in the future
+openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")
 model = "text-embedding-ada-002"
 
-vector_store_address = os.getenv("OPENAI_AZURE_SEARCH_ENDPOINT")
-vector_store_password = os.getenv("OPENAI_AZURE_SEARCH_ADMIN_KEY")
+vector_store_address = os.getenv("AZURE_OPENAI_SEARCH_ENDPOINT")
+vector_store_password = os.getenv("AZURE_OPENAI_SEARCH_ADMIN_KEY")
 
 source_directory = "./source_documents"
 chunk_size = 1000
