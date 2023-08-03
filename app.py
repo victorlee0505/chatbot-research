@@ -10,8 +10,6 @@ from hf_chatbot_base import HuggingFaceChatBotBase
 from hf_chatbot_chroma import HuggingFaceChatBotChroma
 from hf_llm_config import REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B
 from openai_chatbot import OpenAiChatBot
-from hf_redpajama_chatbot import RedpajamaChatBot
-from hf_redpajama_chatbot_base import RedpajamaChatBotBase
 from app_persist import load_widget_state, persist
 from app_ui_constants import CHAT_ONLY, CLOSED, OPEN, REDPAJAMA_CHAT_3B_CONSTANT
 
@@ -314,7 +312,7 @@ def page_openai():
         else:
             home()
 
-def page_repajama():
+def page_hf():
 
     def callback_reset():
         print("callback_reset")
@@ -402,7 +400,7 @@ def page_repajama():
             st.session_state["chat_start_hf"] = False
             
     if st.session_state["chat_start_hf"] == False:
-        print("Welcome to Redpajama Chatbot")
+        print("Welcome to Huggingface Chatbot")
         home()
     else:
         print("Starting Redpajama Chatbot")
@@ -414,12 +412,14 @@ def page_repajama():
                 and st.session_state["chat_bot_hf"] is None
             ):
                 st.session_state["chat_bot_hf"] = HuggingFaceChatBotBase(llm_config=llm_options.get(st.session_state["chat_model_hf"]), gpu= st.session_state["chat_gpu_hf"], gui_mode=True)
-                print(f"Redpajama Chatbot: {CHAT_ONLY}")
+                name = st.session_state["chat_model_hf"]
+                print(f"{name} Chatbot: {CHAT_ONLY}")
             elif (st.session_state["chat_mode_hf"] == OPEN
                 and st.session_state["chat_bot_hf"] is None
             ):
                 st.session_state["chat_bot_hf"] = HuggingFaceChatBotChroma(llm_config=llm_options.get(st.session_state["chat_model_hf"]), gpu= st.session_state["chat_gpu_hf"], gui_mode=True)
-                print(f"Redpajama Chatbot: {OPEN}")
+                name = st.session_state["chat_model_hf"]
+                print(f"{name} Chatbot: {OPEN}")
             else:
                 if st.session_state["chat_bot_hf"] is None:
                     st.session_state["chat_bot_hf"] = HuggingFaceChatBotBase(llm_config=llm_options.get(st.session_state["chat_model_hf"]), gpu= st.session_state["chat_gpu_hf"], gui_mode=True)
@@ -432,7 +432,7 @@ PAGES = {
     "Status": page_settings,
     "azure-chatbot": page_azure,
     "openai-chatbot": page_openai,
-    "redpajama-chatbot": page_repajama,
+    "huggingface-chatbot": page_hf,
 }
 
 if __name__ == "__main__":
