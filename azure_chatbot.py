@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 import logging
 import os
 import sys
@@ -18,14 +19,7 @@ from langchain.vectorstores import Chroma
 from ingest_constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
 from ingest import Ingestion
 
-logger = logging.getLogger(__name__)
-logger.propagate = False
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-handler = logging.StreamHandler(stream=sys.stdout)
-# handler.setLevel(logging.INFO)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+load_dotenv()
 
 persist_directory = PERSIST_DIRECTORY_AZURE
 target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 4))
@@ -51,6 +45,7 @@ class AzureOpenAiChatBot:
         show_stream: bool = False,
         show_source: bool = False,
         gui_mode: bool = False,
+        log_to_file: bool = False,
     ):
         """
         Initialize AzureOpenAiChatBot object
@@ -75,17 +70,35 @@ class AzureOpenAiChatBot:
         self.chat_history = []
         self.inputs = None
         self.end_chat = False
+        self.log_to_file = log_to_file
+
+        self.logger = logging.getLogger("chatbot-chroma")
+        self.logger.setLevel(logging.INFO)
+        self.logger.propagate = False
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.INFO)
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        ch.setFormatter(formatter)
+        self.logger.addHandler(ch)
+
+        if self.log_to_file:
+            log_dir = "logs"
+            os.makedirs(log_dir, exist_ok=True)  
+            log_filename = f"{log_dir}/{self.llm_config.model}.log"
+            fh = logging.FileHandler(log_filename)
+            fh.setLevel(logging.INFO)
+            self.logger.addHandler(fh)
         # greet while starting
         self.welcome()
 
     def welcome(self):
-        logger.info("Initializing ChatBot ...")
+        self.logger.info("Initializing ChatBot ...")
         self.ingest_documents()
         self.initialize_model()
 
         # some time to get user ready
         time.sleep(2)
-        logger.info('Type "bye" or "quit" or "exit" to end chat \n')
+        self.logger.info('Type "bye" or "quit" or "exit" to end chat \n')
         # give time to read what has been printed
         time.sleep(3)
         # Greet and introduce
@@ -105,16 +118,16 @@ class AzureOpenAiChatBot:
         else:
             if os.path.exists(persist_directory):
                 if os.listdir(persist_directory):
-                    logger.info(f"Ingestion skipped!")
+                    self.logger.info(f"Ingestion skipped!")
                 else:
-                    logger.info("PERSIST_DIRECTORY is empty.")
+                    self.logger.info("PERSIST_DIRECTORY is empty.")
                     Ingestion(source_path=self.source_path)
             else:
-                logger.info("PERSIST_DIRECTORY does not exist.")
+                self.logger.info("PERSIST_DIRECTORY does not exist.")
                 Ingestion(source_path=self.source_path)
 
     def initialize_model(self):
-        logger.info("Initializing Model ...")
+        self.logger.info("Initializing Model ...")
         self.embedding_llm = OpenAIEmbeddings(
             model="text-embedding-ada-002",
             deployment="text-embedding-ada-002",
@@ -135,7 +148,7 @@ class AzureOpenAiChatBot:
         callbacks = [StreamingStdOutCallbackHandler()] if self.show_stream else []
 
         if self.open_chat:
-            logger.info(f"Open Chat = True!")
+            self.logger.info(f"Open Chat = True!")
             self.llm = AzureChatOpenAI(
                 deployment_name=deployment_name,
                 callbacks=callbacks,
@@ -145,7 +158,7 @@ class AzureOpenAiChatBot:
                 openai_api_key=openai.api_key,
             )
         else:
-            logger.info(f"Open Chat = False!")
+            self.logger.info(f"Open Chat = False!")
             self.llm = AzureOpenAI(
                 deployment_name=deployment_name,
                 callbacks=callbacks,
@@ -194,15 +207,15 @@ class AzureOpenAiChatBot:
         else:
             text = input("<human>: ")
 
-        logger.debug(text)
+        self.logger.debug(text)
         # end conversation if user wishes so
         if text.lower().strip() in ["bye", "quit", "exit"] and not self.gui_mode:
             # turn flag on
             self.end_chat = True
             # a closing comment
-            logger.info("<bot>: See you soon! Bye!")
+            self.logger.info("<bot>: See you soon! Bye!")
             time.sleep(1)
-            logger.info("\nQuitting ChatBot ...")
+            self.logger.info("\nQuitting ChatBot ...")
             self.inputs = text
         else:
             self.inputs = text

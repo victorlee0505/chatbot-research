@@ -14,21 +14,11 @@ from langchain.memory import ConversationSummaryBufferMemory
 
 load_dotenv()
 
-logger = logging.getLogger(__name__)
-logger.propagate = False
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-handler = logging.StreamHandler(stream=sys.stdout)
-# handler.setLevel(logging.INFO)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
 openai.api_type = "azure"
 openai.api_base = os.getenv("AZURE_OPENAI_BASE_URL")  # your endpoint should look like the following https://YOUR_RESOURCE_NAME.openai.azure.com/
 openai.api_version = os.getenv("AZURE_OPENAI_API_VERSION")  # this may change in the future
 openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")
 deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")  # This will correspond to the custom name you chose for your deployment when you deployed a model.
-
 
 # A ChatBot class
 # Build a ChatBot class with all necessary modules to make a complete conversation
@@ -38,6 +28,7 @@ class AzureOpenAiChatBotBase:
         self,
         show_stream: bool = False,
         gui_mode: bool = False,
+        log_to_file: bool = False,
     ):
         self.llm = None
         self.show_stream = show_stream
@@ -46,15 +37,33 @@ class AzureOpenAiChatBotBase:
         self.chat_history = []
         self.inputs = None
         self.end_chat = False
+        self.log_to_file = log_to_file
+
+        self.logger = logging.getLogger("chatbot-chroma")
+        self.logger.setLevel(logging.INFO)
+        self.logger.propagate = False
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.INFO)
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        ch.setFormatter(formatter)
+        self.logger.addHandler(ch)
+
+        if self.log_to_file:
+            log_dir = "logs"
+            os.makedirs(log_dir, exist_ok=True)  
+            log_filename = f"{log_dir}/{self.llm_config.model}.log"
+            fh = logging.FileHandler(log_filename)
+            fh.setLevel(logging.INFO)
+            self.logger.addHandler(fh)
         # greet while starting
         self.welcome()
 
     def welcome(self):
-        logger.info("Initializing ChatBot ...")
+        self.logger.info("Initializing ChatBot ...")
         self.initialize_model()
         # some time to get user ready
         time.sleep(2)
-        logger.info('Type "bye" or "quit" or "exit" to end chat \n')
+        self.logger.info('Type "bye" or "quit" or "exit" to end chat \n')
         # give time to read what has been printed
         time.sleep(3)
         # Greet and introduce
@@ -69,7 +78,7 @@ class AzureOpenAiChatBotBase:
         print("<bot>: " + greeting)
 
     def initialize_model(self):
-        logger.info("Initializing Model ...")
+        self.logger.info("Initializing Model ...")
         callbacks = [StreamingStdOutCallbackHandler()] if self.show_stream else []
         self.llm = AzureChatOpenAI(
             deployment_name=deployment_name,
@@ -99,15 +108,15 @@ class AzureOpenAiChatBotBase:
         else:
             text = input("<human>: ")
 
-        logger.debug(text)
+        self.logger.debug(text)
         # end conversation if user wishes so
         if text.lower().strip() in ["bye", "quit", "exit"] and not self.gui_mode:
             # turn flag on
             self.end_chat = True
             # a closing comment
-            logger.info("<bot>: See you soon! Bye!")
+            self.logger.info("<bot>: See you soon! Bye!")
             time.sleep(1)
-            logger.info("\nQuitting ChatBot ...")
+            self.logger.info("\nQuitting ChatBot ...")
             self.inputs = text
         else:
             self.inputs = text

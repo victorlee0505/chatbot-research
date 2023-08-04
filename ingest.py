@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 import glob
 import logging
 import os
@@ -39,10 +40,10 @@ from ingest_constants import (
 )
 from git_repo_utils import EXTENSIONS, GitRepoUtils
 
+load_dotenv()
+
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Load environment variables
 persist_directory_azure = PERSIST_DIRECTORY_AZURE
@@ -285,7 +286,7 @@ class Ingestion:
                 openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")
                 openai.api_base = os.getenv("AZURE_OPENAI_BASE_URL")
                 openai.api_version = os.getenv("AZURE_OPENAI_API_VERSION")
-                print("Azure Embedding")
+                
                 embeddings = OpenAIEmbeddings(
                     model="text-embedding-ada-002",
                     deployment="text-embedding-ada-002",
@@ -297,6 +298,7 @@ class Ingestion:
                 )
             else:
                 print("OpenAI Embedding")
+                openai.api_key = os.getenv("OPENAI_API_KEY")
                 embeddings = OpenAIEmbeddings(
                     model="text-embedding-ada-002",
                     openai_api_key=openai.api_key,

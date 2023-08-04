@@ -306,7 +306,7 @@ if __name__ == "__main__":
     bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_3B, show_source=True)
     # bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_7B, show_source=True)
     # bot = HuggingFaceChatBotChroma(llm_config=VICUNA_7B)
-
+    
     # start chatting
     while True:
         # receive user input

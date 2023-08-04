@@ -8,19 +8,33 @@ from azure_chatbot import AzureOpenAiChatBot
 from azure_chatbot_base import AzureOpenAiChatBotBase
 from hf_chatbot_base import HuggingFaceChatBotBase
 from hf_chatbot_chroma import HuggingFaceChatBotChroma
-from hf_llm_config import REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B
+from hf_chatbot_coder import HuggingFaceChatBotCoder
+from hf_llm_config import CODEGEN25_7B, CODEGEN2_1B, CODEGEN2_4B, REDPAJAMA_3B, REDPAJAMA_7B, SANTA_CODER_1B, VICUNA_7B
 from openai_chatbot import OpenAiChatBot
 from app_persist import load_widget_state, persist
-from app_ui_constants import CHAT_ONLY, CLOSED, OPEN, REDPAJAMA_CHAT_3B_CONSTANT
+from app_ui_constants import CHAT_ONLY, CLOSED, OPEN, REDPAJAMA_CHAT_3B_CONSTANT, SANTA_CODER_1B_CONSTANT
 
 st.set_page_config(
         page_title="ChatBot-research",
         page_icon="👋",
     )
 
-llm_options = {
+llm_chat_options = {
+    "RedPajama 3B": REDPAJAMA_3B,
+    "RedPajama 7B": REDPAJAMA_7B,
+    "Vicuna 7B": VICUNA_7B,
+}
+
+llm_chroma_options = {
     "RedPajama 3B": REDPAJAMA_3B,
     "Vicuna 7B": VICUNA_7B,
+}
+
+llm_coder_options = {
+    "SantaCoder 1B": SANTA_CODER_1B,
+    "Codegen2 1B": CODEGEN2_1B, 
+    "Codegen2 4B": CODEGEN2_4B, 
+    "Codegen2.5 7B": CODEGEN25_7B, 
 }
 
 def main():
@@ -57,11 +71,24 @@ def main():
             "chat_openai": [],
 
             "chat_bot_hf": None,
+
             "chat_mode_hf": CHAT_ONLY,
             "chat_start_hf": False,
             "chat_model_hf": REDPAJAMA_CHAT_3B_CONSTANT,
             "chat_gpu_hf": False,
             "chat_hf": [],
+
+            "chat_mode_chroma_hf": OPEN,
+            "chat_start_chroma_hf": False,
+            "chat_model_chroma_hf": REDPAJAMA_CHAT_3B_CONSTANT,
+            "chat_gpu_chroma_hf": False,
+            "chat_chroma_hf": [],
+
+            "chat_mode_coder_hf": CHAT_ONLY,
+            "chat_start_coder_hf": False,
+            "chat_model_coder_hf": SANTA_CODER_1B_CONSTANT,
+            "chat_gpu_coder_hf": False,
+            "chat_coder_hf": [],
         })
 
     page = st.sidebar.radio("Select your page", tuple(PAGES.keys()), format_func=str.capitalize, key="sidebar")
@@ -142,6 +169,8 @@ def page_azure():
 
         st.markdown(
             """
+
+        Azure OpenAI powered chatbot w/ w/o ChromaDB vector store.
 
         Please complete the setting below!
 
@@ -246,6 +275,7 @@ def page_openai():
 
         st.markdown(
             """
+        OpenAI powered chatbot with ChromaDB vector store.
 
         Please complete the setting below!
 
@@ -336,6 +366,8 @@ def page_hf():
         st.markdown(
             """
 
+        HuggingFace Opensource LLM powered chatbot.
+
         Please complete the setting below!
 
         ##### Model?
@@ -346,25 +378,18 @@ def page_hf():
         - Default: False
         - True: if you want to try to use CUDA
 
-        ##### Chat mode?
-        - Chat Only: this is normal chatbot
-        - Open-Ended : this will load context (docs / code repo) from source_documents folder and answer to any prompt 
-
-        ##### Prompt:
-        - If you choose Open-Ended chat mode, the response might not from the dataset you loaded.
-        - you should ask like "in the context, do you find 'PLACEHOLDER'?
-
         """
         )
         # Define the columns
 
         # Add a radio button to the first column
 
-        st.selectbox("Choose a LLM model:", llm_options.keys(), key=persist("chat_model_hf"))
+        st.selectbox("Choose a LLM model:", llm_chat_options.keys(), key=persist("chat_model_hf"))
         # Add a checkbox to the second column
 
         st.checkbox("CUDA", key=persist("chat_gpu_hf"))
-        st.radio("Choose a chat mode:", st.session_state["chat_mode_hf_options"], key=persist("chat_mode_hf"))
+        st.session_state["chat_mode_hf"] = CHAT_ONLY
+        # st.radio("Choose a chat mode:", st.session_state["chat_mode_hf_options"], key=persist("chat_mode_hf"))
         start = st.button("Start", on_click=callback)
         if start:
             print("start clicked")
@@ -403,26 +428,218 @@ def page_hf():
         print("Welcome to Huggingface Chatbot")
         home()
     else:
-        print("Starting Redpajama Chatbot")
+        print("Starting HuggingFace Chatbot")
         if st.session_state["chat_mode_hf"] is not None:
             print(st.session_state["chat_mode_hf"])
             # try to load model
-            if (
-                st.session_state["chat_mode_hf"] == CHAT_ONLY
-                and st.session_state["chat_bot_hf"] is None
-            ):
-                st.session_state["chat_bot_hf"] = HuggingFaceChatBotBase(llm_config=llm_options.get(st.session_state["chat_model_hf"]), gpu= st.session_state["chat_gpu_hf"], gui_mode=True)
+            if st.session_state["chat_bot_hf"] is None:
+                st.session_state["chat_bot_hf"] = HuggingFaceChatBotBase(llm_config=llm_chat_options.get(st.session_state["chat_model_hf"]), gpu= st.session_state["chat_gpu_hf"], gui_mode=True)
                 name = st.session_state["chat_model_hf"]
                 print(f"{name} Chatbot: {CHAT_ONLY}")
-            elif (st.session_state["chat_mode_hf"] == OPEN
-                and st.session_state["chat_bot_hf"] is None
-            ):
-                st.session_state["chat_bot_hf"] = HuggingFaceChatBotChroma(llm_config=llm_options.get(st.session_state["chat_model_hf"]), gpu= st.session_state["chat_gpu_hf"], gui_mode=True)
-                name = st.session_state["chat_model_hf"]
+            run()
+        else:
+            home()
+
+def page_hf_chroma():
+
+    def callback_reset():
+        print("callback_reset")
+        st.session_state["chat_start_chroma_hf"] = False
+        st.session_state["chat_mode_chroma_hf"] = CHAT_ONLY
+        st.session_state["chat_model_chroma_hf"] = REDPAJAMA_CHAT_3B_CONSTANT
+        st.session_state["chat_gpu_chroma_hf"] = False
+        del st.session_state["chat_bot_hf"]
+        st.session_state["chat_bot_hf"] = None
+        st.session_state["chat_chroma_hf"] = []
+        gc.collect()
+
+    st.button("Reset Chatbot", on_click=callback_reset)
+
+    def callback():
+        print("callback")
+        if st.session_state["chat_mode_chroma_hf"] in st.session_state["chat_mode_hf_options"]:
+            st.session_state["chat_start_chroma_hf"] = True
+
+    def home():
+        st.markdown(
+            """
+
+        HuggingFace Opensource LLM powered chatbot with ChromaDB vector store.
+
+        Please complete the setting below!
+
+        ##### Model?
+        - 3B: a model that can be run with 16GB system memory or at least 8GB VRAM with CUDA
+        - 7B: a model that can be run with 40GB system memory or at least 16GB VRAM with CUDA
+
+        ##### CUDA (Nvidia GPU acceleration) (if you don't know what is this, leave it un-checked)?
+        - Default: False
+        - True: if you want to try to use CUDA
+
+        """
+        )
+        # Define the columns
+
+        # Add a radio button to the first column
+
+        st.selectbox("Choose a LLM model:", llm_chroma_options.keys(), key=persist("chat_model_chroma_hf"))
+        # Add a checkbox to the second column
+
+        st.checkbox("CUDA", key=persist("chat_gpu_chroma_hf"))
+        st.session_state["chat_bot_chroma_hf"] = OPEN
+        # st.radio("Choose a chat mode:", st.session_state["chat_mode_hf_options"], key=persist("chat_mode_hf"))
+        start = st.button("Start", on_click=callback)
+        if start:
+            print("start clicked")
+
+    def run():
+        chatbot = st.session_state["chat_bot_hf"]
+
+        ################################################################
+
+        for message in st.session_state["chat_chroma_hf"]:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        if prompt := st.chat_input("How may I help you?"):
+            st.session_state["chat_chroma_hf"].append({"role": "user", "content": prompt})
+            chatbot.user_input(prompt=prompt)
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
+                full_response = chatbot.bot_response()
+                message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+            st.session_state["chat_chroma_hf"].append({"role": "assistant", "content": full_response})
+
+        #################################################################
+
+    if "chat_start_chroma_hf" not in st.session_state:
+        if st.session_state["chat_bot_hf"] is not None:
+            st.session_state["chat_start_chroma_hf"] = True
+        else:
+            st.session_state["chat_start_chroma_hf"] = False
+            
+    if st.session_state["chat_start_chroma_hf"] == False:
+        print("Welcome to Huggingface Chatbot")
+        home()
+    else:
+        print("Starting HuggingFace Chatbot")
+        if st.session_state["chat_mode_chroma_hf"] is not None:
+            print(st.session_state["chat_mode_hf"])
+            # try to load model
+            if st.session_state["chat_bot_hf"] is None:
+                st.session_state["chat_bot_hf"] = HuggingFaceChatBotChroma(llm_config=llm_chroma_options.get(st.session_state["chat_model_chroma_hf"]), gpu= st.session_state["chat_gpu_chroma_hf"], gui_mode=True)
+                name = st.session_state["chat_model_chroma_hf"]
                 print(f"{name} Chatbot: {OPEN}")
-            else:
-                if st.session_state["chat_bot_hf"] is None:
-                    st.session_state["chat_bot_hf"] = HuggingFaceChatBotBase(llm_config=llm_options.get(st.session_state["chat_model_hf"]), gpu= st.session_state["chat_gpu_hf"], gui_mode=True)
+            run()
+        else:
+            home()
+
+def page_hf_coder():
+
+    def callback_reset():
+        print("callback_reset")
+        st.session_state["chat_start_coder_hf"] = False
+        st.session_state["chat_mode_coder_hf"] = CHAT_ONLY
+        st.session_state["chat_model_coder_hf"] = SANTA_CODER_1B_CONSTANT
+        st.session_state["chat_gpu_coder_hf"] = False
+        del st.session_state["chat_bot_hf"]
+        st.session_state["chat_bot_hf"] = None
+        st.session_state["chat_coder_hf"] = []
+        gc.collect()
+
+    st.button("Reset Chatbot", on_click=callback_reset)
+
+    def callback():
+        print("callback")
+        if st.session_state["chat_mode_coder_hf"] in st.session_state["chat_mode_hf_options"]:
+            st.session_state["chat_start_coder_hf"] = True
+
+    def home():
+        st.markdown(
+            """
+
+        HuggingFace Opensource LLM powered chatbot for Coding.
+            
+        Please complete the setting below!
+
+        ##### Model?
+        - 3B: a model that can be run with 16GB system memory or at least 8GB VRAM with CUDA
+        - 7B: a model that can be run with 40GB system memory or at least 16GB VRAM with CUDA
+
+        ##### CUDA (Nvidia GPU acceleration) (if you don't know what is this, leave it un-checked)?
+        - Default: False
+        - True: if you want to try to use CUDA
+
+        ##### Chat mode?
+        - Chat Only: this is normal chatbot
+        - Open-Ended : this will load context (docs / code repo) from source_documents folder and answer to any prompt 
+
+        ##### Prompt:
+        - If you choose Open-Ended chat mode, the response might not from the dataset you loaded.
+        - you should ask like "in the context, do you find 'PLACEHOLDER'?
+
+        """
+        )
+        # Define the columns
+
+        # Add a radio button to the first column
+
+        st.selectbox("Choose a LLM model:", llm_coder_options.keys(), key=persist("chat_model_coder_hf"))
+        # Add a checkbox to the second column
+
+        st.checkbox("CUDA", key=persist("chat_gpu_coder_hf"))
+        st.session_state["chat_mode_coder_hf"] = OPEN
+        # st.radio("Choose a chat mode:", st.session_state["chat_mode_hf_options"], key=persist("chat_mode_hf"))
+        start = st.button("Start", on_click=callback)
+        if start:
+            print("start clicked")
+
+    def run():
+        chatbot = st.session_state["chat_bot_hf"]
+
+        ################################################################
+
+        for message in st.session_state["chat_coder_hf"]:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        if prompt := st.chat_input("How may I help you?"):
+            st.session_state["chat_coder_hf"].append({"role": "user", "content": prompt})
+            chatbot.user_input(prompt=prompt)
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
+                full_response = chatbot.bot_response()
+                message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+            st.session_state["chat_coder_hf"].append({"role": "assistant", "content": full_response})
+
+        #################################################################
+
+    if "chat_start_coder_hf" not in st.session_state:
+        if st.session_state["chat_bot_hf"] is not None:
+            st.session_state["chat_start_coder_hf"] = True
+        else:
+            st.session_state["chat_start_coder_hf"] = False
+            
+    if st.session_state["chat_start_coder_hf"] == False:
+        print("Welcome to Huggingface Chatbot")
+        home()
+    else:
+        print("Starting HuggingFace Chatbot")
+        if st.session_state["chat_mode_coder_hf"] is not None:
+            print(st.session_state["chat_mode_coder_hf"])
+            # try to load model
+            if st.session_state["chat_bot_hf"] is None:
+                st.session_state["chat_bot_hf"] = HuggingFaceChatBotCoder(llm_config=llm_coder_options.get(st.session_state["chat_model_coder_hf"]), gpu= st.session_state["chat_gpu_coder_hf"], gui_mode=True)
+                name = st.session_state["chat_model_coder_hf"]
+                print(f"{name} Chatbot: {CHAT_ONLY}")
             run()
         else:
             home()
@@ -433,6 +650,8 @@ PAGES = {
     "azure-chatbot": page_azure,
     "openai-chatbot": page_openai,
     "huggingface-chatbot": page_hf,
+    "huggingface-chroma-chatbot": page_hf_chroma,
+    "huggingface-coder-chatbot": page_hf_coder,
 }
 
 if __name__ == "__main__":

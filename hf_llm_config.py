@@ -62,3 +62,19 @@ REDPAJAMA_7B = LLMConfig(
 VICUNA_7B = LLMConfig(
     model="TheBloke/Wizard-Vicuna-7B-Uncensored-HF", ai_prefix="<bot>:", human_prefix="<human>:"
 )
+
+SANTA_CODER_1B = LLMConfig(
+    model="bigcode/santacoder", ai_prefix="<|assistant|>", human_prefix="<|user|>", model_max_length=1024
+)
+
+CODEGEN2_1B = LLMConfig(
+    model="Salesforce/codegen2-1B", ai_prefix="<|assistant|>", human_prefix="<|user|>"
+)
+
+CODEGEN2_4B = LLMConfig(
+    model="Salesforce/codegen2-3_7B", ai_prefix="<|assistant|>", human_prefix="<|user|>"
+)
+
+CODEGEN25_7B = LLMConfig(
+    model="Salesforce/codegen25-7b-multi", ai_prefix="<|assistant|>", human_prefix="<|user|>"
+)
