@@ -6,7 +6,7 @@ from typing import Dict, Union, Any, List
 
 import numpy as np
 import torch
-from langchain import HuggingFacePipeline
+from langchain import HuggingFacePipeline, LLMChain, PromptTemplate
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
@@ -19,6 +19,28 @@ from transformers import (
 )
 
 from hf_llm_config import CODEGEN25_7B, CODEGEN2_1B, CODEGEN2_4B, SANTA_CODER_1B, LLMConfig
+
+class MyCustomHandler(BaseCallbackHandler):
+    def on_llm_start(
+        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
+    ) -> Any:
+        """Run when LLM starts running."""
+        print(f"My custom handler, llm_start: {prompts[-1]} stop")
+
+    def on_llm_end(self, response: Any, **kwargs: Any) -> Any:
+        """Run when LLM ends running."""
+        print(f"My custom handler, llm_end: {response.generations[0][0].text} stop")
+
+class StoppingCriteriaSub(StoppingCriteria):
+    def __init__(self, stops=[], encounters=1):
+        super().__init__()
+        self.stops = stops
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
+        for stop in self.stops:
+            if torch.all((stop == input_ids[0][-len(stop) :])).item():
+                return True
+        return False
 
 def timer_decorator(func):
     def wrapper(*args, **kwargs):
@@ -39,11 +61,14 @@ class HuggingFaceChatBotCoder:
         llm_config: LLMConfig = None,
         gpu: bool = False,
         gui_mode: bool = False,
+        show_callback: bool = False,
         log_to_file: bool = False,
     ):
         self.llm_config = llm_config
+        self.show_callback = show_callback
         self.tokenizer = None
         self.model = None
+        self.pipe = None
         self.gpu = gpu
         self.device = None
         self.gui_mode = gui_mode
@@ -110,6 +135,40 @@ class HuggingFaceChatBotCoder:
         else:
             self.model = AutoModelForCausalLM.from_pretrained(self.llm_config.model, trust_remote_code=True).to(self.device)
             self.torch_dtype = torch.bfloat16
+        
+        if self.gpu:
+            stop_words_ids = [
+                self.tokenizer(stop_word, return_tensors="pt").to('cuda')["input_ids"].squeeze()
+                for stop_word in self.llm_config.stop_words
+            ]
+        else:
+            stop_words_ids = [
+                self.tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
+                for stop_word in self.llm_config.stop_words
+            ]
+        stopping_criteria = StoppingCriteriaList(
+            [StoppingCriteriaSub(stops=stop_words_ids)]
+        )
+
+        self.pipe = pipeline(
+            "text-generation",
+            model=self.model,
+            tokenizer=self.tokenizer,
+            max_new_tokens=self.llm_config.max_new_tokens,
+            temperature=self.llm_config.temperature,
+            top_p=self.llm_config.top_p,
+            top_k=self.llm_config.top_k,
+            pad_token_id=self.tokenizer.eos_token_id,
+            device=self.device,
+            do_sample=self.llm_config.do_sample,
+            torch_dtype=self.torch_dtype,
+            stopping_criteria=stopping_criteria,
+            model_kwargs={"offload_folder": "offload"},
+        )
+        handler = [MyCustomHandler()] if self.show_callback else None
+        self.llm = HuggingFacePipeline(pipeline=self.pipe, callbacks=handler)
+        PROMPT = PromptTemplate.from_template("{input}")
+        self.qa = LLMChain(llm=self.llm, prompt=PROMPT, verbose=False)
 
     def user_input(self, prompt: str = None):
         # receive input from user
@@ -127,18 +186,6 @@ class HuggingFaceChatBotCoder:
             time.sleep(1)
             self.logger.info("\nQuitting ChatBot ...")
             self.inputs = text
-        elif text.lower().strip() in ["reset"]:
-            self.logger.info("<bot>: reset conversation memory detected.")
-            memory = ConversationSummaryBufferMemory(
-                llm=self.llm,
-                max_token_limit=self.llm_config.max_new_tokens,
-                output_key="response",
-                memory_key="history",
-                ai_prefix=self.llm_config.ai_prefix,
-                human_prefix=self.llm_config.human_prefix,
-            )
-            self.qa.memory = memory
-            self.inputs = text
         else:
             self.inputs = text
 
@@ -149,9 +196,16 @@ class HuggingFaceChatBotCoder:
             answer = "<bot>: See you soon! Bye!"
             print(f"<bot>: {answer}")
             return answer
-        inputs = self.tokenizer.encode(self.inputs, return_tensors="pt").to(self.device)
-        outputs = self.model.generate(inputs, max_new_tokens=400)
-        answer = self.tokenizer.decode(outputs[0])
+        
+        inputs = self.tokenizer(self.inputs, return_tensors="pt").to(self.device).input_ids
+        sample = self.model.generate(inputs, max_length=self.llm_config.max_new_tokens)
+        answer = self.tokenizer.decode(sample[0], skip_special_tokens=True)
+        
+        # response = self.pipe(self.inputs)
+        # answer = response[0]['generated_text']
+
+        # answer = self.qa.run(self.inputs)
+        
         # in case, bot fails to answer
         if answer == "":
             answer = self.random_response()
@@ -173,10 +227,13 @@ if __name__ == "__main__":
 
     # get config
     # build a ChatBot object
-    bot = HuggingFaceChatBotCoder(llm_config=SANTA_CODER_1B)
-    # bot = HuggingFaceChatBotCoder(llm_config=CODEGEN2_1B)
-    # bot = HuggingFaceChatBotCoder(llm_config=CODEGEN2_4B)
-    # bot = HuggingFaceChatBotCoder(llm_config=CODEGEN25_7B)
+
+    # bot = HuggingFaceChatBotCoder(llm_config=SANTA_CODER_1B)
+    bot = HuggingFaceChatBotCoder(llm_config=CODEGEN25_7B)
+
+    # These 2 not that good.
+    # bot = HuggingFaceChatBotCoder(llm_config=CODEGEN2_1B, gpu=True)
+    # bot = HuggingFaceChatBotCoder(llm_config=CODEGEN2_4B, gpu=True)
 
     # start chatting
     while True:

@@ -59,22 +59,37 @@ REDPAJAMA_7B = LLMConfig(
     model="togethercomputer/RedPajama-INCITE-7B-Chat", ai_prefix="<bot>:", human_prefix="<human>:", prompt_template=REDPAJAMA_PROMPT_TEMPLATE, stop_words=["<human>:", "Question:"]
 )
 
+# LLAMA 1
 VICUNA_7B = LLMConfig(
     model="TheBloke/Wizard-Vicuna-7B-Uncensored-HF", ai_prefix="<bot>:", human_prefix="<human>:"
 )
 
+# LLAMA 2
+LMSYS_VICUNA_1_5_7B = LLMConfig(
+    model="lmsys/vicuna-7b-v1.5", ai_prefix="<bot>:", human_prefix="<human>:"
+)
+
+# TOGETHER_LLAMA2_7B = LLMConfig(
+#     model="togethercomputer/LLaMA-2-7B-32K", ai_prefix="<bot>:", human_prefix="<human>:", prompt_template=REDPAJAMA_PROMPT_TEMPLATE, stop_words=['\nHuman:', '\n```\n']
+# )
+
+
+
+
+
 SANTA_CODER_1B = LLMConfig(
-    model="bigcode/santacoder", ai_prefix="<|assistant|>", human_prefix="<|user|>", model_max_length=1024
+    model="bigcode/santacoder", ai_prefix="<|assistant|>", human_prefix="<|user|>", model_max_length=1024, temperature=0.1
 )
 
 CODEGEN2_1B = LLMConfig(
-    model="Salesforce/codegen2-1B", ai_prefix="<|assistant|>", human_prefix="<|user|>"
+    model="Salesforce/codegen2-1B", ai_prefix="<|assistant|>", human_prefix="<|user|>", temperature=0.1
 )
 
 CODEGEN2_4B = LLMConfig(
-    model="Salesforce/codegen2-3_7B", ai_prefix="<|assistant|>", human_prefix="<|user|>"
+    model="Salesforce/codegen2-3_7B", ai_prefix="<|assistant|>", human_prefix="<|user|>", temperature=0.1
 )
 
 CODEGEN25_7B = LLMConfig(
-    model="Salesforce/codegen25-7b-multi", ai_prefix="<|assistant|>", human_prefix="<|user|>"
+    model="Salesforce/codegen25-7b-multi", ai_prefix="<|assistant|>", human_prefix="<|user|>", temperature=0.1, max_new_tokens=128
 )
+

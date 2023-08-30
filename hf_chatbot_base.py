@@ -18,7 +18,7 @@ from transformers import (
     pipeline,
 )
 
-from hf_llm_config import REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B, LLMConfig
+from hf_llm_config import REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B, LMSYS_VICUNA_1_5_7B, LLMConfig
 
 class MyCustomHandler(BaseCallbackHandler):
     def on_llm_start(
@@ -158,6 +158,7 @@ class HuggingFaceChatBotBase:
             temperature=self.llm_config.temperature,
             top_p=self.llm_config.top_p,
             top_k=self.llm_config.top_k,
+            repetition_penalty=1.1,
             pad_token_id=tokenizer.eos_token_id,
             device=self.device,
             do_sample=self.llm_config.do_sample,
@@ -248,9 +249,11 @@ if __name__ == "__main__":
 
     # get config
     # build a ChatBot object
-    bot = HuggingFaceChatBotBase(llm_config=REDPAJAMA_3B)
+    # bot = HuggingFaceChatBotBase(llm_config=REDPAJAMA_3B)
     # bot = HuggingFaceChatBotBase(llm_config=REDPAJAMA_7B)
     # bot = HuggingFaceChatBotBase(llm_config=VICUNA_7B)
+
+    bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B)
 
     # start chatting
     while True:

@@ -2,27 +2,25 @@ import logging
 import os
 import sys
 import time
-from typing import Dict, Union, Any, List
-import chromadb
+from typing import Any, Dict, List, Union
 
+import chromadb
 import numpy as np
 import torch
 from langchain import HuggingFacePipeline
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.chains import ConversationalRetrievalChain
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain.chains import ConversationalRetrievalChain, RetrievalQA
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.vectorstores import Chroma
-from langchain.chains.chat_vector_db.prompts import QA_PROMPT
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           StoppingCriteria, StoppingCriteriaList, pipeline)
-from langchain.prompts.prompt import PromptTemplate
 
-from ingest_constants import CHROMA_SETTINGS_HF, PERSIST_DIRECTORY_HF
-from hf_llm_config import LLMConfig
+from hf_llm_config import REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B, LMSYS_VICUNA_1_5_7B, LLMConfig
+from hf_prompts import CONDENSE_QUESTION_PROMPT, QA_PROMPT_DOCUMENT_CHAT
 from ingest import Ingestion
-
-from hf_llm_config import REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B, LLMConfig
+from ingest_constants import CHROMA_SETTINGS_HF, PERSIST_DIRECTORY_HF
 
 persist_directory = PERSIST_DIRECTORY_HF
 
@@ -65,6 +63,7 @@ class HuggingFaceChatBotChroma:
     def __init__(
         self,
         llm_config: LLMConfig = None,
+        open_ended: bool = False,
         load_data: bool = False,
         show_stream: bool = False,
         show_source: bool = False,
@@ -74,6 +73,7 @@ class HuggingFaceChatBotChroma:
         log_to_file: bool = False,
     ):
         self.llm_config = llm_config
+        self.open_ended = open_ended
         self.load_data = load_data
         self.show_stream = show_stream
         self.show_source = show_source
@@ -210,7 +210,10 @@ class HuggingFaceChatBotChroma:
             model_kwargs={"offload_folder": "offload"},
         )
 
-        handler = [MyCustomHandler()] if self.show_callback else None
+        handler = []
+        handler.append(MyCustomHandler()) if self.show_callback else None
+        handler.append(StreamingStdOutCallbackHandler()) if self.show_stream else None
+        print(f"handler: {handler.__len__()}")
         self.llm = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
 
         memory = ConversationSummaryBufferMemory(
@@ -222,15 +225,30 @@ class HuggingFaceChatBotChroma:
             human_prefix=self.llm_config.human_prefix,
         )
 
-        self.qa = ConversationalRetrievalChain.from_llm(
-            llm=self.llm,
-            chain_type="stuff",
-            retriever=retriever,
-            memory=memory,
-            # combine_docs_chain_kwargs={"prompt": QA_PROMPT},
-            get_chat_history=lambda h: h,
-            return_source_documents=self.show_source,
-        )
+        if self.open_ended:
+            print(f"open_ended: {self.open_ended}")
+            self.qa = ConversationalRetrievalChain.from_llm(
+                llm=self.llm,
+                chain_type="stuff",
+                retriever=retriever,
+                memory=memory,
+                condense_question_prompt=CONDENSE_QUESTION_PROMPT,
+                get_chat_history=lambda h: h,
+                return_source_documents=self.show_source,
+            )
+        else:
+            # still WIP, looks like it still answering outside of the context
+            print(f"open_ended: {self.open_ended}")
+            self.qa = RetrievalQA.from_llm(
+                llm=self.llm,
+                # chain_type="stuff",
+                retriever=retriever,
+                # memory=memory,
+                prompt=QA_PROMPT_DOCUMENT_CHAT,
+                # combine_docs_chain_kwargs={"prompt": QA_PROMPT_DOCUMENT_CHAT},
+                # get_chat_history=lambda h: h,
+                return_source_documents=self.show_source,
+            )
 
     def user_input(self, prompt: str = None):
         # receive input from user
@@ -275,11 +293,23 @@ class HuggingFaceChatBotChroma:
             answer = "<bot>: Conversation Memory cleared!"
             print(f"<bot>: {answer}")
             return answer
-        response = self.qa({"question": self.inputs})
-        answer, docs = (
-            response["answer"],
-            response["source_documents"] if self.show_source else [],
-        )
+        
+        if self.open_ended:
+            response = self.qa({"question": self.inputs})
+        else:
+            response = self.qa({"query": self.inputs})
+
+        if self.open_ended:
+            answer, docs = (
+                response["answer"],
+                response["source_documents"] if self.show_source else [],
+            )
+        else:
+            answer, docs = (
+                response["result"],
+                response["source_documents"] if self.show_source else [],
+            )
+
         # in case, bot fails to answer
         if answer == "":
             answer = self.random_response()
@@ -303,9 +333,10 @@ class HuggingFaceChatBotChroma:
 
 if __name__ == "__main__":
     # build a ChatBot object
-    bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_3B, show_source=True)
-    # bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_7B, show_source=True)
+    bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_3B)
+    # bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_7B)
     # bot = HuggingFaceChatBotChroma(llm_config=VICUNA_7B)
+    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B)
     
     # start chatting
     while True:
