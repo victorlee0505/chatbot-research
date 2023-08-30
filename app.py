@@ -9,7 +9,7 @@ from azure_chatbot_base import AzureOpenAiChatBotBase
 from hf_chatbot_base import HuggingFaceChatBotBase
 from hf_chatbot_chroma import HuggingFaceChatBotChroma
 from hf_chatbot_coder import HuggingFaceChatBotCoder
-from hf_llm_config import CODEGEN25_7B, CODEGEN2_1B, CODEGEN2_4B, REDPAJAMA_3B, REDPAJAMA_7B, SANTA_CODER_1B, VICUNA_7B
+from hf_llm_config import CODEGEN25_7B, CODEGEN2_1B, CODEGEN2_4B, REDPAJAMA_3B, REDPAJAMA_7B, SANTA_CODER_1B, VICUNA_7B, LMSYS_VICUNA_1_5_7B
 from openai_chatbot import OpenAiChatBot
 from app_persist import load_widget_state, persist
 from app_ui_constants import CHAT_ONLY, CLOSED, OPEN, REDPAJAMA_CHAT_3B_CONSTANT, SANTA_CODER_1B_CONSTANT
@@ -23,11 +23,13 @@ llm_chat_options = {
     "RedPajama 3B": REDPAJAMA_3B,
     "RedPajama 7B": REDPAJAMA_7B,
     "Vicuna 7B": VICUNA_7B,
+    "Vicuna 1.5 7B LLAMA2": LMSYS_VICUNA_1_5_7B,
 }
 
 llm_chroma_options = {
     "RedPajama 3B": REDPAJAMA_3B,
     "Vicuna 7B": VICUNA_7B,
+    "Vicuna 1.5 7B LLAMA2": LMSYS_VICUNA_1_5_7B,
 }
 
 llm_coder_options = {
@@ -135,13 +137,29 @@ def page_settings():
         - **chat_mode_openai**: `{st.session_state.chat_mode_openai}`
         - **chat_start_openai**: `{st.session_state.chat_start_openai}`
         
-        Redpajama Chatbot Status values
+        HuggingFace Chatbot Status values
         ---------------
 
         - **chat_mode_hf**: `{st.session_state.chat_mode_hf}`
         - **chat_start_hf**: `{st.session_state.chat_start_hf}`
         - **chat_model_hf**: `{st.session_state.chat_model_hf}`
         - **chat_gpu_hf**: `{st.session_state.chat_gpu_hf}`
+
+        HuggingFace Chatbot Chroma Status values
+        ---------------
+
+        - **chat_mode_hf**: `{st.session_state.chat_mode_chroma_hf}`
+        - **chat_start_hf**: `{st.session_state.chat_start_chroma_hf}`
+        - **chat_model_hf**: `{st.session_state.chat_model_chroma_hf}`
+        - **chat_gpu_hf**: `{st.session_state.chat_gpu_chroma_hf}`
+
+        Redpajama Chatbot Coder Status values
+        ---------------
+
+        - **chat_mode_hf**: `{st.session_state.chat_mode_coder_hf}`
+        - **chat_start_hf**: `{st.session_state.chat_start_coder_hf}`
+        - **chat_model_hf**: `{st.session_state.chat_model_coder_hf}`
+        - **chat_gpu_hf**: `{st.session_state.chat_gpu_coder_hf}`
         """
     )
 
@@ -445,7 +463,7 @@ def page_hf_chroma():
     def callback_reset():
         print("callback_reset")
         st.session_state["chat_start_chroma_hf"] = False
-        st.session_state["chat_mode_chroma_hf"] = CHAT_ONLY
+        st.session_state["chat_mode_chroma_hf"] = OPEN
         st.session_state["chat_model_chroma_hf"] = REDPAJAMA_CHAT_3B_CONSTANT
         st.session_state["chat_gpu_chroma_hf"] = False
         del st.session_state["chat_bot_hf"]
@@ -523,7 +541,7 @@ def page_hf_chroma():
             st.session_state["chat_start_chroma_hf"] = False
             
     if st.session_state["chat_start_chroma_hf"] == False:
-        print("Welcome to Huggingface Chatbot")
+        print("Welcome to Huggingface Chatbot Chroma")
         home()
     else:
         print("Starting HuggingFace Chatbot")
@@ -592,7 +610,7 @@ def page_hf_coder():
         # Add a checkbox to the second column
 
         st.checkbox("CUDA", key=persist("chat_gpu_coder_hf"))
-        st.session_state["chat_mode_coder_hf"] = OPEN
+        st.session_state["chat_mode_coder_hf"] = CHAT_ONLY
         # st.radio("Choose a chat mode:", st.session_state["chat_mode_hf_options"], key=persist("chat_mode_hf"))
         start = st.button("Start", on_click=callback)
         if start:
@@ -629,7 +647,7 @@ def page_hf_coder():
             st.session_state["chat_start_coder_hf"] = False
             
     if st.session_state["chat_start_coder_hf"] == False:
-        print("Welcome to Huggingface Chatbot")
+        print("Welcome to Huggingface Chatbot Coder")
         home()
     else:
         print("Starting HuggingFace Chatbot")
