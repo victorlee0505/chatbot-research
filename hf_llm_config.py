@@ -1,5 +1,6 @@
 from langchain import BasePromptTemplate, PromptTemplate
 from langchain.chains.conversation.prompt import PROMPT
+from hf_prompts import REDPAJAMA_PROMPT_TEMPLATE
 
 class LLMConfig:
     def __init__(
@@ -11,6 +12,7 @@ class LLMConfig:
         stop_words: list = None,
         model_max_length: int = 2048,
         max_new_tokens: int = 500,
+        max_mem_tokens: int = 500,
         temperature: int = 0.7,
         top_p: int = 0.7,
         top_k: int = 50,
@@ -25,6 +27,7 @@ class LLMConfig:
         self.stop_words = stop_words if stop_words is not None else []
         self.model_max_length = model_max_length
         self.max_new_tokens = max_new_tokens
+        self.max_mem_tokens = max_mem_tokens
         self.temperature = temperature
         self.top_p = top_p
         self.top_k = top_k
@@ -40,16 +43,6 @@ class LLMConfig:
         if not self.human_prefix:
             raise ValueError("human_prefix is not set.")
 
-
-REDPAJAMA_TEMPLATE = """The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
-
-Current conversation:
-{history}
-
-<human>: {input}
-<bot>:"""
-
-REDPAJAMA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["history", "input"], template=REDPAJAMA_TEMPLATE)
 
 REDPAJAMA_3B = LLMConfig(
     model="togethercomputer/RedPajama-INCITE-Chat-3B-v1", ai_prefix="<bot>:", human_prefix="<human>:", prompt_template=REDPAJAMA_PROMPT_TEMPLATE, stop_words=["<human>:", "Question:"]
@@ -67,6 +60,14 @@ VICUNA_7B = LLMConfig(
 # LLAMA 2
 LMSYS_VICUNA_1_5_7B = LLMConfig(
     model="lmsys/vicuna-7b-v1.5", ai_prefix="<bot>:", human_prefix="<human>:"
+)
+
+LMSYS_VICUNA_1_5_16K_7B = LLMConfig(
+    model="lmsys/vicuna-7b-v1.5-16k", ai_prefix="<bot>:", human_prefix="<human>:", model_max_length=16000, max_new_tokens=10000, max_mem_tokens=2000
+)
+
+LMSYS_LONGCHAT_1_5_32K_7B = LLMConfig(
+    model="lmsys/longchat-7b-v1.5-32k", ai_prefix="<bot>:", human_prefix="<human>:", model_max_length=32000, max_new_tokens=22000, max_mem_tokens=2000
 )
 
 # TOGETHER_LLAMA2_7B = LLMConfig(

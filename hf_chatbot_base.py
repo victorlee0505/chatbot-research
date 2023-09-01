@@ -6,7 +6,7 @@ from typing import Dict, Union, Any, List
 
 import numpy as np
 import torch
-from langchain import HuggingFacePipeline
+from langchain import HuggingFacePipeline, LLMChain
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
@@ -18,7 +18,8 @@ from transformers import (
     pipeline,
 )
 
-from hf_llm_config import REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B, LMSYS_VICUNA_1_5_7B, LLMConfig
+from hf_llm_config import REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B, LMSYS_VICUNA_1_5_7B, LMSYS_VICUNA_1_5_16K_7B, LMSYS_LONGCHAT_1_5_32K_7B, LLMConfig
+from hf_prompts import NO_MEM_PROMPT
 
 class MyCustomHandler(BaseCallbackHandler):
     def on_llm_start(
@@ -60,12 +61,14 @@ class HuggingFaceChatBotBase:
         self,
         llm_config: LLMConfig = None,
         show_callback: bool = False,
+        disable_mem: bool = False,
         gpu: bool = False,
         gui_mode: bool = False,
         log_to_file: bool = False,
     ):
         self.llm_config = llm_config
         self.show_callback = show_callback
+        self.disable_mem = disable_mem
         self.gpu = gpu
         self.device = None
         self.gui_mode = gui_mode
@@ -170,16 +173,19 @@ class HuggingFaceChatBotBase:
         handler = [MyCustomHandler()] if self.show_callback else None
         self.llm = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
 
-        memory = ConversationSummaryBufferMemory(
-            llm=self.llm,
-            max_token_limit=500,
-            output_key="response",
-            memory_key="history",
-            ai_prefix=self.llm_config.ai_prefix,
-            human_prefix=self.llm_config.human_prefix,
-        )
+        if self.disable_mem:
+            self.qa = LLMChain(llm=self.llm, prompt=NO_MEM_PROMPT, verbose=False)
+        else:
+            memory = ConversationSummaryBufferMemory(
+                llm=self.llm,
+                max_token_limit=self.llm_config.max_mem_tokens,
+                output_key="response",
+                memory_key="history",
+                ai_prefix=self.llm_config.ai_prefix,
+                human_prefix=self.llm_config.human_prefix,
+            )
 
-        self.qa = ConversationChain(llm=self.llm, memory=memory, prompt=self.llm_config.prompt_template, verbose=False)
+            self.qa = ConversationChain(llm=self.llm, memory=memory, prompt=self.llm_config.prompt_template, verbose=False)
 
     def user_input(self, prompt: str = None):
         # receive input from user
@@ -201,7 +207,7 @@ class HuggingFaceChatBotBase:
             self.logger.info("<bot>: reset conversation memory detected.")
             memory = ConversationSummaryBufferMemory(
                 llm=self.llm,
-                max_token_limit=self.llm_config.max_new_tokens,
+                max_token_limit=self.llm_config.max_mem_tokens,
                 output_key="response",
                 memory_key="history",
                 ai_prefix=self.llm_config.ai_prefix,
@@ -225,8 +231,12 @@ class HuggingFaceChatBotBase:
             print(f"<bot>: {answer}")
             return answer
         response = self.qa({"input": self.inputs})
+        if self.disable_mem:
+            resKey = "text"
+        else:
+            resKey = "response"
         answer = (
-            response["response"]
+            response[resKey]
         )
         # in case, bot fails to answer
         if answer == "":
@@ -253,7 +263,11 @@ if __name__ == "__main__":
     # bot = HuggingFaceChatBotBase(llm_config=REDPAJAMA_7B)
     # bot = HuggingFaceChatBotBase(llm_config=VICUNA_7B)
 
-    bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B)
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B)
+    bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B, disable_mem=True)
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B, disable_mem=True)
+
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B, disable_mem=True)
 
     # start chatting
     while True:

@@ -1,5 +1,24 @@
 from langchain.prompts.prompt import PromptTemplate
 
+redpajama_template = """The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
+
+Current conversation:
+{history}
+
+<human>: {input}
+<bot>:"""
+
+REDPAJAMA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["history", "input"], template=redpajama_template)
+
+template = """
+You are a talkative and creative AI writer and provides lots of specific details from its context to answer the following 
+
+Question: {input}
+
+Helpful Answer:"""
+
+NO_MEM_PROMPT = PromptTemplate(template=template, input_variables=["input"])
+
 _template = """Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
 
 Chat History:
