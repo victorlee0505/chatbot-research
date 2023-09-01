@@ -133,7 +133,7 @@ class HuggingFaceChatBotBase:
 
         if self.gpu:
             model = AutoModelForCausalLM.from_pretrained(self.llm_config.model)
-            model = self.model.half().cuda()
+            model.half().cuda()
             torch_dtype = torch.float16
         else:
             model = AutoModelForCausalLM.from_pretrained(self.llm_config.model)
