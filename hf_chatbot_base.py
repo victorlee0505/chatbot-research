@@ -232,11 +232,11 @@ class HuggingFaceChatBotBase:
             return answer
         response = self.qa({"input": self.inputs})
         if self.disable_mem:
-            resKey = "text"
+            output_key = "text"
         else:
-            resKey = "response"
+            output_key = "response"
         answer = (
-            response[resKey]
+            response[output_key]
         )
         # in case, bot fails to answer
         if answer == "":
@@ -263,11 +263,13 @@ if __name__ == "__main__":
     # bot = HuggingFaceChatBotBase(llm_config=REDPAJAMA_7B)
     # bot = HuggingFaceChatBotBase(llm_config=VICUNA_7B)
 
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B)
-    bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B, disable_mem=True)
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B, disable_mem=True)
+    bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B)
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B)
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B)
 
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B, disable_mem=True)
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B, disable_mem=True)
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B, disable_mem=True)
 
     # start chatting
     while True:

@@ -17,7 +17,7 @@ from langchain.vectorstores import Chroma
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
                           StoppingCriteria, StoppingCriteriaList, pipeline)
 
-from hf_llm_config import REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B, LMSYS_VICUNA_1_5_7B, LLMConfig
+from hf_llm_config import REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B, LMSYS_VICUNA_1_5_7B, LMSYS_VICUNA_1_5_16K_7B, LMSYS_LONGCHAT_1_5_32K_7B, LLMConfig
 from hf_prompts import CONDENSE_QUESTION_PROMPT, QA_PROMPT_DOCUMENT_CHAT
 from ingest import Ingestion
 from ingest_constants import CHROMA_SETTINGS_HF, PERSIST_DIRECTORY_HF
@@ -218,7 +218,7 @@ class HuggingFaceChatBotChroma:
 
         memory = ConversationSummaryBufferMemory(
             llm=self.llm,
-            max_token_limit=500,
+            max_token_limit=self.llm_config.max_mem_tokens,
             output_key="answer",
             memory_key="chat_history",
             ai_prefix=self.llm_config.ai_prefix,
@@ -270,7 +270,7 @@ class HuggingFaceChatBotChroma:
             self.logger.info("<bot>: reset conversation memory detected.")
             memory = ConversationSummaryBufferMemory(
                 llm=self.llm,
-                max_token_limit=self.llm_config.max_new_tokens,
+                max_token_limit=self.llm_config.max_mem_tokens,
                 output_key="answer",
                 memory_key="chat_history",
                 ai_prefix=self.llm_config.ai_prefix,
@@ -295,20 +295,17 @@ class HuggingFaceChatBotChroma:
             return answer
         
         if self.open_ended:
-            response = self.qa({"question": self.inputs})
+            input_key = "question"
+            output_key = "answer"
         else:
-            response = self.qa({"query": self.inputs})
+            input_key = "query"
+            output_key = "result"
 
-        if self.open_ended:
-            answer, docs = (
-                response["answer"],
-                response["source_documents"] if self.show_source else [],
-            )
-        else:
-            answer, docs = (
-                response["result"],
-                response["source_documents"] if self.show_source else [],
-            )
+        response = self.qa({input_key: self.inputs})
+        answer, docs = (
+            response[output_key],
+            response["source_documents"] if self.show_source else [],
+        )
 
         # in case, bot fails to answer
         if answer == "":
@@ -337,6 +334,8 @@ if __name__ == "__main__":
     # bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_7B)
     # bot = HuggingFaceChatBotChroma(llm_config=VICUNA_7B)
     # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B)
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B)
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B)
     
     # start chatting
     while True:
