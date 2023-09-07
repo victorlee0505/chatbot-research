@@ -13,6 +13,7 @@ from langchain.memory import ConversationSummaryBufferMemory
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    TextStreamer,
     StoppingCriteria,
     StoppingCriteriaList,
     pipeline,
@@ -130,7 +131,7 @@ class HuggingFaceChatBotBase:
     def initialize_model(self):
         self.logger.info("Initializing Model ...")
         tokenizer = AutoTokenizer.from_pretrained(self.llm_config.model, model_max_length=self.llm_config.model_max_length)
-
+        streamer = TextStreamer(tokenizer, skip_prompt=True)
         if self.gpu:
             model = AutoModelForCausalLM.from_pretrained(self.llm_config.model)
             model.half().cuda()
@@ -167,10 +168,11 @@ class HuggingFaceChatBotBase:
             do_sample=self.llm_config.do_sample,
             torch_dtype=torch_dtype,
             stopping_criteria=stopping_criteria,
+            streamer=streamer,
             model_kwargs={"offload_folder": "offload"},
         )
-        
-        handler = [MyCustomHandler()] if self.show_callback else None
+        handler = []
+        handler = handler.append(MyCustomHandler()) if self.show_callback else handler
         self.llm = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
 
         if self.disable_mem:
@@ -259,11 +261,11 @@ if __name__ == "__main__":
 
     # get config
     # build a ChatBot object
-    # bot = HuggingFaceChatBotBase(llm_config=REDPAJAMA_3B)
+    bot = HuggingFaceChatBotBase(llm_config=REDPAJAMA_3B)
     # bot = HuggingFaceChatBotBase(llm_config=REDPAJAMA_7B)
     # bot = HuggingFaceChatBotBase(llm_config=VICUNA_7B)
 
-    bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B)
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B)
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B)
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B)
 

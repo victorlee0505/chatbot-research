@@ -14,8 +14,14 @@ from langchain.chains import ConversationalRetrievalChain, RetrievalQA
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.vectorstores import Chroma
-from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          StoppingCriteria, StoppingCriteriaList, pipeline)
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    TextStreamer,
+    StoppingCriteria,
+    StoppingCriteriaList,
+    pipeline,
+)
 
 from hf_llm_config import REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B, LMSYS_VICUNA_1_5_7B, LMSYS_VICUNA_1_5_16K_7B, LMSYS_LONGCHAT_1_5_32K_7B, LLMConfig
 from hf_prompts import CONDENSE_QUESTION_PROMPT, QA_PROMPT_DOCUMENT_CHAT
@@ -172,6 +178,7 @@ class HuggingFaceChatBotChroma:
         )
 
         tokenizer = AutoTokenizer.from_pretrained(self.llm_config.model, model_max_length=self.llm_config.model_max_length)
+        streamer = TextStreamer(tokenizer, skip_prompt=True)
         if self.gpu:
             model = AutoModelForCausalLM.from_pretrained(self.llm_config.model)
             model.half().cuda()
@@ -207,13 +214,12 @@ class HuggingFaceChatBotChroma:
             do_sample=self.llm_config.do_sample,
             torch_dtype=torch_dtype,
             stopping_criteria=stopping_criteria,
+            streamer=streamer,
             model_kwargs={"offload_folder": "offload"},
         )
 
         handler = []
         handler.append(MyCustomHandler()) if self.show_callback else None
-        handler.append(StreamingStdOutCallbackHandler()) if self.show_stream else None
-        print(f"handler: {handler.__len__()}")
         self.llm = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
 
         memory = ConversationSummaryBufferMemory(

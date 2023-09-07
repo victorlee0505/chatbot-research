@@ -15,6 +15,7 @@ from transformers import (
     AutoTokenizer,
     StoppingCriteria,
     StoppingCriteriaList,
+    TextStreamer,
     pipeline,
 )
 
@@ -128,7 +129,7 @@ class HuggingFaceChatBotCoder:
     def initialize_model(self):
         self.logger.info("Initializing Model ...")
         self.tokenizer = AutoTokenizer.from_pretrained(self.llm_config.model, model_max_length=self.llm_config.model_max_length, trust_remote_code=True)
-
+        streamer = TextStreamer(self.tokenizer, skip_prompt=True)
         if self.gpu:
             self.model = AutoModelForCausalLM.from_pretrained(self.llm_config.model, trust_remote_code=True).to(self.device)
             self.torch_dtype = torch.float16
@@ -163,6 +164,7 @@ class HuggingFaceChatBotCoder:
             do_sample=self.llm_config.do_sample,
             torch_dtype=self.torch_dtype,
             stopping_criteria=stopping_criteria,
+            streamer=streamer,
             model_kwargs={"offload_folder": "offload"},
         )
         handler = [MyCustomHandler()] if self.show_callback else None
