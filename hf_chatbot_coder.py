@@ -13,13 +13,14 @@ from langchain.memory import ConversationSummaryBufferMemory
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    GenerationConfig,
     StoppingCriteria,
     StoppingCriteriaList,
     TextStreamer,
     pipeline,
 )
 
-from hf_llm_config import CODEGEN25_7B, CODEGEN2_1B, CODEGEN2_4B, SANTA_CODER_1B, LLMConfig
+from hf_llm_config import CODEGEN25_7B, CODEGEN2_1B, CODEGEN2_4B, SANTA_CODER_1B, WIZARDCODER_3B, WIZARDCODER_PY_7B, LLMConfig
 
 class MyCustomHandler(BaseCallbackHandler):
     def on_llm_start(
@@ -128,6 +129,7 @@ class HuggingFaceChatBotCoder:
 
     def initialize_model(self):
         self.logger.info("Initializing Model ...")
+        generation_config = GenerationConfig.from_pretrained(self.llm_config.model)
         self.tokenizer = AutoTokenizer.from_pretrained(self.llm_config.model, model_max_length=self.llm_config.model_max_length, trust_remote_code=True)
         streamer = TextStreamer(self.tokenizer, skip_prompt=True)
         if self.gpu:
@@ -158,12 +160,13 @@ class HuggingFaceChatBotCoder:
             max_new_tokens=self.llm_config.max_new_tokens,
             temperature=self.llm_config.temperature,
             top_p=self.llm_config.top_p,
-            top_k=self.llm_config.top_k,
+            # top_k=self.llm_config.top_k,
+            generation_config=generation_config,
             pad_token_id=self.tokenizer.eos_token_id,
             device=self.device,
-            do_sample=self.llm_config.do_sample,
+            # do_sample=self.llm_config.do_sample,
             torch_dtype=self.torch_dtype,
-            stopping_criteria=stopping_criteria,
+            # stopping_criteria=stopping_criteria,
             streamer=streamer,
             model_kwargs={"offload_folder": "offload"},
         )
@@ -199,14 +202,14 @@ class HuggingFaceChatBotCoder:
             print(f"<bot>: {answer}")
             return answer
         
-        inputs = self.tokenizer(self.inputs, return_tensors="pt").to(self.device).input_ids
-        sample = self.model.generate(inputs, max_length=self.llm_config.max_new_tokens)
-        answer = self.tokenizer.decode(sample[0], skip_special_tokens=True)
+        # inputs = self.tokenizer(self.inputs, return_tensors="pt").to(self.device).input_ids
+        # sample = self.model.generate(inputs, max_length=self.llm_config.max_new_tokens, pad_token_id=self.tokenizer.eos_token_id)
+        # answer = self.tokenizer.decode(sample[0], skip_special_tokens=True)
         
         # response = self.pipe(self.inputs)
         # answer = response[0]['generated_text']
 
-        # answer = self.qa.run(self.inputs)
+        answer = self.qa.run(self.inputs)
         
         # in case, bot fails to answer
         if answer == "":
@@ -231,7 +234,9 @@ if __name__ == "__main__":
     # build a ChatBot object
 
     # bot = HuggingFaceChatBotCoder(llm_config=SANTA_CODER_1B)
-    bot = HuggingFaceChatBotCoder(llm_config=CODEGEN25_7B)
+    # bot = HuggingFaceChatBotCoder(llm_config=CODEGEN25_7B)
+    bot = HuggingFaceChatBotCoder(llm_config=WIZARDCODER_3B)
+    # bot = HuggingFaceChatBotCoder(llm_config=WIZARDCODER_PY_7B)
 
     # These 2 not that good.
     # bot = HuggingFaceChatBotCoder(llm_config=CODEGEN2_1B, gpu=True)

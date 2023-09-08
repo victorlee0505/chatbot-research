@@ -94,3 +94,10 @@ CODEGEN25_7B = LLMConfig(
     model="Salesforce/codegen25-7b-multi", ai_prefix="<|assistant|>", human_prefix="<|user|>", temperature=0.1, max_new_tokens=128
 )
 
+WIZARDCODER_3B = LLMConfig(
+    model="WizardLM/WizardCoder-3B-V1.0", ai_prefix="<|assistant|>", human_prefix="<|user|>", temperature=0.1
+)
+
+WIZARDCODER_PY_7B = LLMConfig(
+    model="WizardLM/WizardCoder-Python-7B-V1.0", ai_prefix="<|assistant|>", human_prefix="<|user|>", temperature=0.1
+)

@@ -13,6 +13,7 @@ from langchain.memory import ConversationSummaryBufferMemory
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    GenerationConfig,
     TextStreamer,
     StoppingCriteria,
     StoppingCriteriaList,
@@ -130,6 +131,7 @@ class HuggingFaceChatBotBase:
 
     def initialize_model(self):
         self.logger.info("Initializing Model ...")
+        generation_config = GenerationConfig.from_pretrained(self.llm_config.model)
         tokenizer = AutoTokenizer.from_pretrained(self.llm_config.model, model_max_length=self.llm_config.model_max_length)
         streamer = TextStreamer(tokenizer, skip_prompt=True)
         if self.gpu:
@@ -162,6 +164,7 @@ class HuggingFaceChatBotBase:
             temperature=self.llm_config.temperature,
             top_p=self.llm_config.top_p,
             top_k=self.llm_config.top_k,
+            generation_config=generation_config,
             repetition_penalty=1.1,
             pad_token_id=tokenizer.eos_token_id,
             device=self.device,

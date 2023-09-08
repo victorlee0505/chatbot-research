@@ -17,6 +17,7 @@ from langchain.vectorstores import Chroma
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    GenerationConfig,
     TextStreamer,
     StoppingCriteria,
     StoppingCriteriaList,
@@ -163,6 +164,7 @@ class HuggingFaceChatBotChroma:
 
     def initialize_model(self):
         self.logger.info("Initializing Model ...")
+        generation_config = GenerationConfig.from_pretrained(self.llm_config.model)
         if self.gpu:
             self.embedding_llm = HuggingFaceEmbeddings()
         else:
