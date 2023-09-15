@@ -5,6 +5,7 @@ import time
 from typing import Any, Dict, List, Union
 
 import chromadb
+import ctransformers
 import numpy as np
 import torch
 from langchain import HuggingFacePipeline
@@ -23,8 +24,21 @@ from transformers import (
     StoppingCriteriaList,
     pipeline,
 )
-
-from hf_llm_config import REDPAJAMA_3B, REDPAJAMA_7B, VICUNA_7B, LMSYS_VICUNA_1_5_7B, LMSYS_VICUNA_1_5_16K_7B, LMSYS_LONGCHAT_1_5_32K_7B, LLMConfig
+from hf_llm_config import (
+    REDPAJAMA_3B,
+    REDPAJAMA_7B,
+    VICUNA_7B,
+    LMSYS_VICUNA_1_5_7B,
+    LMSYS_VICUNA_1_5_16K_7B,
+    LMSYS_LONGCHAT_1_5_32K_7B,
+    LMSYS_VICUNA_1_5_7B_Q8,
+    LMSYS_VICUNA_1_5_16K_7B_Q8,
+    LMSYS_VICUNA_1_5_13B_Q8,
+    LMSYS_VICUNA_1_5_16K_13B_Q8,
+    STARCHAT_BETA_16B_Q8,
+    WIZARDLM_FALCON_40B_Q6K, 
+    LLMConfig
+)
 from hf_prompts import CONDENSE_QUESTION_PROMPT, QA_PROMPT_DOCUMENT_CHAT
 from ingest import Ingestion
 from ingest_constants import CHROMA_SETTINGS_HF, PERSIST_DIRECTORY_HF
@@ -70,21 +84,23 @@ class HuggingFaceChatBotChroma:
     def __init__(
         self,
         llm_config: LLMConfig = None,
-        open_ended: bool = False,
+        disable_mem: bool = False,
         load_data: bool = False,
         show_stream: bool = False,
         show_source: bool = False,
         show_callback: bool = False,
+        gpu_layers: int = 0,
         gpu: bool = False,
         gui_mode: bool = False,
         log_to_file: bool = False,
     ):
         self.llm_config = llm_config
-        self.open_ended = open_ended
+        self.disable_mem = disable_mem
         self.load_data = load_data
         self.show_stream = show_stream
         self.show_source = show_source
         self.show_callback = show_callback
+        self.gpu_layers = gpu_layers
         self.gpu = gpu
         self.device = None
         self.gui_mode = gui_mode
@@ -130,7 +146,18 @@ class HuggingFaceChatBotChroma:
             torch.device(f"cuda:{torch.cuda.current_device()}" if torch.cuda.is_available() else "cpu")
             self.device = torch.device(f"cuda:{torch.cuda.current_device()}" if torch.cuda.is_available() else "cpu")
         self.ingest_documents()
-        self.initialize_model()
+
+        if self.llm_config.model_type is None:
+            torch.set_num_threads(os.cpu_count())
+            if not self.gpu:
+                self.logger.info("Disable CUDA")
+                os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+                self.device=torch.device('cpu')
+            else:
+                self.device = torch.device(f"cuda:{torch.cuda.current_device()}" if torch.cuda.is_available() else "cpu")
+            self.initialize_model()
+        else:
+            self.initialize_gguf_model()
         # some time to get user ready
         time.sleep(2)
         self.logger.info('Type "bye" or "quit" or "exit" to end chat \n')
@@ -211,6 +238,7 @@ class HuggingFaceChatBotChroma:
             temperature=self.llm_config.temperature,
             top_p=self.llm_config.top_p,
             top_k=self.llm_config.top_k,
+            generation_config=generation_config,
             pad_token_id=tokenizer.eos_token_id,
             device=self.device,
             do_sample=self.llm_config.do_sample,
@@ -233,8 +261,8 @@ class HuggingFaceChatBotChroma:
             human_prefix=self.llm_config.human_prefix,
         )
 
-        if self.open_ended:
-            print(f"open_ended: {self.open_ended}")
+        if not self.disable_mem:
+            print(f"disable_mem: {self.disable_mem}")
             self.qa = ConversationalRetrievalChain.from_llm(
                 llm=self.llm,
                 chain_type="stuff",
@@ -246,7 +274,97 @@ class HuggingFaceChatBotChroma:
             )
         else:
             # still WIP, looks like it still answering outside of the context
-            print(f"open_ended: {self.open_ended}")
+            print(f"disable_mem: {self.disable_mem}")
+            self.qa = RetrievalQA.from_llm(
+                llm=self.llm,
+                # chain_type="stuff",
+                retriever=retriever,
+                # memory=memory,
+                prompt=QA_PROMPT_DOCUMENT_CHAT,
+                # combine_docs_chain_kwargs={"prompt": QA_PROMPT_DOCUMENT_CHAT},
+                # get_chat_history=lambda h: h,
+                return_source_documents=self.show_source,
+            )
+
+    def initialize_gguf_model(self):
+        self.logger.info("Initializing Model ...")
+
+        if self.gpu:
+            self.embedding_llm = HuggingFaceEmbeddings()
+        else:
+            model_kwargs = {'device': 'cpu'}
+            self.embedding_llm = HuggingFaceEmbeddings(model_kwargs=model_kwargs)
+        client = chromadb.PersistentClient(settings=CHROMA_SETTINGS_HF, path=persist_directory)
+        db = Chroma(
+            client=client,
+            embedding_function=self.embedding_llm,
+        )
+        retriever = db.as_retriever(
+            search_type="similarity", search_kwargs={"k": self.llm_config.target_source_chunks}, max_tokens_limit=self.llm_config.retriever_max_tokens_limit
+        )
+
+        model = ctransformers.AutoModelForCausalLM.from_pretrained(self.llm_config.model, 
+            model_file=self.llm_config.model_file, 
+            model_type=self.llm_config.model_type,
+            hf=True,
+            temperature=self.llm_config.temperature,
+            top_p=self.llm_config.top_p,
+            top_k=self.llm_config.top_k,
+            repetition_penalty=1.2,
+            context_length=self.llm_config.model_max_length,
+            max_new_tokens=self.llm_config.max_new_tokens,
+            # stop=self.llm_config.stop_words,
+            threads=os.cpu_count(),
+            stream=True,
+            gpu_layers=self.gpu_layers
+            )
+        tokenizer = ctransformers.AutoTokenizer.from_pretrained(model)
+        streamer = TextStreamer(tokenizer, skip_prompt=True)
+
+        stop_words_ids = [
+                tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
+                for stop_word in self.llm_config.stop_words
+            ]
+        stopping_criteria = StoppingCriteriaList(
+            [StoppingCriteriaSub(stops=stop_words_ids)]
+        )
+        pipe = pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            max_new_tokens=self.llm_config.max_new_tokens,
+            pad_token_id=tokenizer.eos_token_id,
+            eos_token_id=tokenizer.convert_tokens_to_ids(self.llm_config.eos_token_id) if self.llm_config.eos_token_id is not None else None,
+            streamer=streamer,
+            model_kwargs={"offload_folder": "offload"},
+        )
+        handler = []
+        handler = handler.append(MyCustomHandler()) if self.show_callback else handler
+        self.llm = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
+
+        memory = ConversationSummaryBufferMemory(
+            llm=self.llm,
+            max_token_limit=self.llm_config.max_mem_tokens,
+            output_key="answer",
+            memory_key="chat_history",
+            ai_prefix=self.llm_config.ai_prefix,
+            human_prefix=self.llm_config.human_prefix,
+        )
+
+        if not self.disable_mem:
+            print(f"disable_mem: {self.disable_mem}")
+            self.qa = ConversationalRetrievalChain.from_llm(
+                llm=self.llm,
+                chain_type="stuff",
+                retriever=retriever,
+                memory=memory,
+                condense_question_prompt=CONDENSE_QUESTION_PROMPT,
+                get_chat_history=lambda h: h,
+                return_source_documents=self.show_source,
+            )
+        else:
+            # still WIP, looks like it still answering outside of the context
+            print(f"disable_mem: {self.disable_mem}")
             self.qa = RetrievalQA.from_llm(
                 llm=self.llm,
                 # chain_type="stuff",
@@ -302,7 +420,7 @@ class HuggingFaceChatBotChroma:
             print(f"<bot>: {answer}")
             return answer
         
-        if self.open_ended:
+        if not self.disable_mem:
             input_key = "question"
             output_key = "answer"
         else:
@@ -338,12 +456,23 @@ class HuggingFaceChatBotChroma:
 
 if __name__ == "__main__":
     # build a ChatBot object
-    bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_3B)
-    # bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_7B)
-    # bot = HuggingFaceChatBotChroma(llm_config=VICUNA_7B)
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B)
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B)
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B)
+    # bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_3B, disable_mem=True)
+    # bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_7B, disable_mem=True)
+    # bot = HuggingFaceChatBotChroma(llm_config=VICUNA_7B, disable_mem=True)
+    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B, disable_mem=True)
+    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_7B, disable_mem=True)
+    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_LONGCHAT_1_5_32K_7B, disable_mem=True)
+
+    # GGUF Quantantized LLM, use less RAM
+    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
+    bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
+
+    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_13B_Q8, disable_mem=True, gpu_layers=10) # mem = 18GB
+    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q8, disable_mem=True, gpu_layers=0) # mem = 18GB
+    
+    # This one is not good at all
+    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDLM_FALCON_40B_Q6K, disable_mem=True, gpu_layers=10) # mem = 45GB
+
     
     # start chatting
     while True:

@@ -2,6 +2,8 @@ openai
 llama_index
 langchain
 transformers
+ctransformers
+xformers
 wheel
 azure-search-documents --pre
 lxml
