@@ -2,12 +2,12 @@ import gc
 import os
 import openai
 import streamlit as st
+import torch
 from streamlit_chat import message
 
 from azure_chatbot import AzureOpenAiChatBot
 from azure_chatbot_base import AzureOpenAiChatBotBase
 from hf_chatbot_base import HuggingFaceChatBotBase
-from hf_chatbot_base_gguf import HuggingFaceChatBotGGUFBase
 from hf_chatbot_chroma import HuggingFaceChatBotChroma
 from hf_chatbot_coder import HuggingFaceChatBotCoder
 from hf_llm_config import (
@@ -71,6 +71,11 @@ llm_coder_options = {
     "Codegen2 4B": CODEGEN2_4B, 
     "Codegen2.5 7B": CODEGEN25_7B, 
 }
+
+def torch_gc():
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
 
 def main():
     print("run main()")
@@ -409,6 +414,7 @@ def page_hf():
         st.session_state["chat_bot_hf"] = None
         st.session_state["chat_hf"] = []
         gc.collect()
+        torch_gc()
 
     st.button("Reset Chatbot", on_click=callback_reset)
 
@@ -516,6 +522,7 @@ def page_hf_chroma():
         st.session_state["chat_bot_hf"] = None
         st.session_state["chat_chroma_hf"] = []
         gc.collect()
+        torch_gc()
 
     st.button("Reset Chatbot", on_click=callback_reset)
 
@@ -622,6 +629,7 @@ def page_hf_coder():
         st.session_state["chat_bot_hf"] = None
         st.session_state["chat_coder_hf"] = []
         gc.collect()
+        torch_gc()
 
     st.button("Reset Chatbot", on_click=callback_reset)
 
