@@ -25,12 +25,16 @@ from hf_llm_config import (
     LMSYS_VICUNA_1_5_13B_Q8,
     LMSYS_VICUNA_1_5_16K_13B_Q8,
     SANTA_CODER_1B,
+    WIZARDCODER_3B,
+    WIZARDCODER_PY_7B,
     STARCHAT_BETA_16B_Q8,
     WIZARDLM_FALCON_40B_Q6K
 )
 from openai_chatbot import OpenAiChatBot
+from langchain.callbacks.base import BaseCallbackHandler
 from app_persist import load_widget_state, persist
 from app_ui_constants import CHAT_ONLY, CLOSED, OPEN, REDPAJAMA_CHAT_3B_CONSTANT, SANTA_CODER_1B_CONSTANT
+from hf_streaming_util import text_streamer
 
 st.set_page_config(
         page_title="ChatBot-research",
@@ -67,15 +71,26 @@ llm_chroma_options = {
 
 llm_coder_options = {
     "SantaCoder 1B": SANTA_CODER_1B,
-    "Codegen2 1B": CODEGEN2_1B, 
-    "Codegen2 4B": CODEGEN2_4B, 
-    "Codegen2.5 7B": CODEGEN25_7B, 
+    "Codegen2 1B": CODEGEN2_1B,
+    "Codegen2 4B": CODEGEN2_4B,
+    "Codegen2.5 7B": CODEGEN25_7B,
+    "WizardCoder 3B": WIZARDCODER_3B,
+    "WizardCoder Python 7B": WIZARDCODER_PY_7B,
 }
 
 def torch_gc():
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
+
+class StreamHandler(BaseCallbackHandler):
+    def __init__(self, container, initial_text=""):
+        self.container = container
+        self.text = initial_text
+
+    def on_llm_new_token(self, token: str, **kwargs) -> None:
+        self.text += token
+        self.container.markdown(self.text)
 
 def main():
     print("run main()")
@@ -267,7 +282,8 @@ def page_azure():
 
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
-                full_response = chatbot.bot_response()
+                stream_handler = StreamHandler(message_placeholder)
+                full_response = chatbot.qa.run(prompt, callbacks=[stream_handler])
                 message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
             st.session_state["chat_azure"].append({"role": "assistant", "content": full_response})
@@ -464,7 +480,7 @@ def page_hf():
             print("start clicked")
 
     def run():
-        chatbot = st.session_state["chat_bot_hf"]
+        chatbot : HuggingFaceChatBotBase = st.session_state["chat_bot_hf"]
 
         ################################################################
 
@@ -474,14 +490,15 @@ def page_hf():
 
         if prompt := st.chat_input("How may I help you?"):
             st.session_state["chat_hf"].append({"role": "user", "content": prompt})
-            chatbot.user_input(prompt=prompt)
             with st.chat_message("user"):
                 st.markdown(prompt)
 
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
-                full_response = chatbot.bot_response()
-                message_placeholder.markdown(full_response + "▌")
+                full_response = ""
+                for chunk in text_streamer(prompt, chatbot):
+                    full_response += chunk
+                    message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
             st.session_state["chat_hf"].append({"role": "assistant", "content": full_response})
 
@@ -503,7 +520,7 @@ def page_hf():
             # try to load model
             if st.session_state["chat_bot_hf"] is None:
                 gpu_layers= 10 if st.session_state["chat_gpu_hf"] else 0
-                st.session_state["chat_bot_hf"] = HuggingFaceChatBotBase(llm_config=llm_chat_options.get(st.session_state["chat_model_hf"]), gpu= st.session_state["chat_gpu_hf"], gpu_layers=gpu_layers, gui_mode=True, disable_mem=st.session_state["chat_no_mem_hf"])
+                st.session_state["chat_bot_hf"] = HuggingFaceChatBotBase(llm_config=llm_chat_options.get(st.session_state["chat_model_hf"]), gpu= st.session_state["chat_gpu_hf"], gpu_layers=gpu_layers, server_mode=True, disable_mem=st.session_state["chat_no_mem_hf"])
                 name = st.session_state["chat_model_hf"]
                 print(f"{name} Chatbot: {CHAT_ONLY}")
             run()
@@ -571,7 +588,7 @@ def page_hf_chroma():
             print("start clicked")
 
     def run():
-        chatbot = st.session_state["chat_bot_hf"]
+        chatbot : HuggingFaceChatBotChroma = st.session_state["chat_bot_hf"]
 
         ################################################################
 
@@ -581,14 +598,15 @@ def page_hf_chroma():
 
         if prompt := st.chat_input("How may I help you?"):
             st.session_state["chat_chroma_hf"].append({"role": "user", "content": prompt})
-            chatbot.user_input(prompt=prompt)
             with st.chat_message("user"):
                 st.markdown(prompt)
 
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
-                full_response = chatbot.bot_response()
-                message_placeholder.markdown(full_response + "▌")
+                full_response = ""
+                for chunk in text_streamer(prompt, chatbot):
+                    full_response += chunk
+                    message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
             st.session_state["chat_chroma_hf"].append({"role": "assistant", "content": full_response})
 
@@ -610,7 +628,7 @@ def page_hf_chroma():
             # try to load model
             if st.session_state["chat_bot_hf"] is None:
                 gpu_layers= 10 if st.session_state["chat_gpu_chroma_hf"] else 0
-                st.session_state["chat_bot_hf"] = HuggingFaceChatBotChroma(llm_config=llm_chroma_options.get(st.session_state["chat_model_chroma_hf"]), gpu_layers=gpu_layers, gpu= st.session_state["chat_gpu_chroma_hf"], gui_mode=True, disable_mem=st.session_state["chat_no_mem_hf"])
+                st.session_state["chat_bot_hf"] = HuggingFaceChatBotChroma(llm_config=llm_chroma_options.get(st.session_state["chat_model_chroma_hf"]), gpu_layers=gpu_layers, gpu= st.session_state["chat_gpu_chroma_hf"], server_mode=True, disable_mem=st.session_state["chat_no_mem_hf"])
                 name = st.session_state["chat_model_chroma_hf"]
                 print(f"{name} Chatbot: {OPEN}")
             run()
@@ -679,7 +697,7 @@ def page_hf_coder():
             print("start clicked")
 
     def run():
-        chatbot = st.session_state["chat_bot_hf"]
+        chatbot : HuggingFaceChatBotCoder = st.session_state["chat_bot_hf"]
 
         ################################################################
 
@@ -689,14 +707,15 @@ def page_hf_coder():
 
         if prompt := st.chat_input("How may I help you?"):
             st.session_state["chat_coder_hf"].append({"role": "user", "content": prompt})
-            chatbot.user_input(prompt=prompt)
             with st.chat_message("user"):
                 st.markdown(prompt)
 
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
-                full_response = chatbot.bot_response()
-                message_placeholder.markdown(full_response + "▌")
+                full_response = ""
+                for chunk in text_streamer(prompt, chatbot):
+                    full_response += chunk
+                    message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
             st.session_state["chat_coder_hf"].append({"role": "assistant", "content": full_response})
 
@@ -717,7 +736,7 @@ def page_hf_coder():
             print(st.session_state["chat_mode_coder_hf"])
             # try to load model
             if st.session_state["chat_bot_hf"] is None:
-                st.session_state["chat_bot_hf"] = HuggingFaceChatBotCoder(llm_config=llm_coder_options.get(st.session_state["chat_model_coder_hf"]), gpu= st.session_state["chat_gpu_coder_hf"], gui_mode=True)
+                st.session_state["chat_bot_hf"] = HuggingFaceChatBotCoder(llm_config=llm_coder_options.get(st.session_state["chat_model_coder_hf"]), gpu= st.session_state["chat_gpu_coder_hf"], server_mode=True)
                 name = st.session_state["chat_model_coder_hf"]
                 print(f"{name} Chatbot: {CHAT_ONLY}")
             run()

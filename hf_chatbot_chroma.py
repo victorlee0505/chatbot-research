@@ -19,9 +19,10 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     GenerationConfig,
-    TextStreamer,
     StoppingCriteria,
     StoppingCriteriaList,
+    TextStreamer,
+    TextIteratorStreamer,
     pipeline,
 )
 from hf_llm_config import (
@@ -91,7 +92,7 @@ class HuggingFaceChatBotChroma:
         show_callback: bool = False,
         gpu_layers: int = 0,
         gpu: bool = False,
-        gui_mode: bool = False,
+        server_mode: bool = False,
         log_to_file: bool = False,
     ):
         self.llm_config = llm_config
@@ -103,8 +104,9 @@ class HuggingFaceChatBotChroma:
         self.gpu_layers = gpu_layers
         self.gpu = gpu
         self.device = None
-        self.gui_mode = gui_mode
+        self.server_mode = server_mode
         self.llm = None
+        self.streamer = None
         self.embedding_llm = None
         self.qa = None
         self.chat_history = []
@@ -207,7 +209,11 @@ class HuggingFaceChatBotChroma:
         )
 
         tokenizer = AutoTokenizer.from_pretrained(self.llm_config.model, model_max_length=self.llm_config.model_max_length)
-        streamer = TextStreamer(tokenizer, skip_prompt=True)
+        if self.server_mode:
+            self.streamer = TextIteratorStreamer(tokenizer, timeout=10., skip_prompt=True, skip_special_tokens=True)
+        else:
+            self.streamer = TextStreamer(tokenizer, skip_prompt=True)
+
         if self.gpu:
             model = AutoModelForCausalLM.from_pretrained(self.llm_config.model)
             model.half().cuda()
@@ -244,7 +250,7 @@ class HuggingFaceChatBotChroma:
             do_sample=self.llm_config.do_sample,
             torch_dtype=torch_dtype,
             stopping_criteria=stopping_criteria,
-            streamer=streamer,
+            streamer=self.streamer,
             model_kwargs={"offload_folder": "offload"},
         )
 
@@ -319,7 +325,11 @@ class HuggingFaceChatBotChroma:
             gpu_layers=self.gpu_layers
             )
         tokenizer = ctransformers.AutoTokenizer.from_pretrained(model)
-        streamer = TextStreamer(tokenizer, skip_prompt=True)
+
+        if self.server_mode:
+            self.streamer = TextIteratorStreamer(tokenizer, timeout=10., skip_prompt=True, skip_special_tokens=True)
+        else:
+            self.streamer = TextStreamer(tokenizer, skip_prompt=True)
 
         stop_words_ids = [
                 tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
@@ -335,7 +345,7 @@ class HuggingFaceChatBotChroma:
             max_new_tokens=self.llm_config.max_new_tokens,
             pad_token_id=tokenizer.eos_token_id,
             eos_token_id=tokenizer.convert_tokens_to_ids(self.llm_config.eos_token_id) if self.llm_config.eos_token_id is not None else None,
-            streamer=streamer,
+            streamer=self.streamer,
             model_kwargs={"offload_folder": "offload"},
         )
         handler = []
@@ -384,7 +394,7 @@ class HuggingFaceChatBotChroma:
             text = input("<human>: ")
 
         # end conversation if user wishes so
-        if text.lower().strip() in ["bye", "quit", "exit"] and not self.gui_mode:
+        if text.lower().strip() in ["bye", "quit", "exit"] and not self.server_mode:
             # turn flag on
             self.end_chat = True
             # a closing comment
@@ -409,7 +419,7 @@ class HuggingFaceChatBotChroma:
 
     @timer_decorator
     def bot_response(self) -> str:
-        if self.inputs.lower().strip() in ["bye", "quit", "exit"] and self.gui_mode:
+        if self.inputs.lower().strip() in ["bye", "quit", "exit"] and self.server_mode:
             # a closing comment
             answer = "<bot>: See you soon! Bye!"
             print(f"<bot>: {answer}")
@@ -460,12 +470,12 @@ if __name__ == "__main__":
     # bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_7B, disable_mem=True)
     # bot = HuggingFaceChatBotChroma(llm_config=VICUNA_7B, disable_mem=True)
     # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B, disable_mem=True)
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_7B, disable_mem=True)
+    bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_7B, disable_mem=True)
     # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_LONGCHAT_1_5_32K_7B, disable_mem=True)
 
     # GGUF Quantantized LLM, use less RAM
     # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
-    bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
+    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
 
     # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_13B_Q8, disable_mem=True, gpu_layers=10) # mem = 18GB
     # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q8, disable_mem=True, gpu_layers=0) # mem = 18GB

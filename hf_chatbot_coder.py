@@ -14,9 +14,11 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     GenerationConfig,
+    TextStreamer,
     StoppingCriteria,
     StoppingCriteriaList,
     TextStreamer,
+    TextIteratorStreamer,
     pipeline,
 )
 
@@ -62,7 +64,7 @@ class HuggingFaceChatBotCoder:
         self,
         llm_config: LLMConfig = None,
         gpu: bool = False,
-        gui_mode: bool = False,
+        server_mode: bool = False,
         show_callback: bool = False,
         log_to_file: bool = False,
     ):
@@ -73,7 +75,8 @@ class HuggingFaceChatBotCoder:
         self.pipe = None
         self.gpu = gpu
         self.device = None
-        self.gui_mode = gui_mode
+        self.streamer = None
+        self.server_mode = server_mode
         self.chat_history = []
         self.inputs = None
         self.end_chat = False
@@ -129,9 +132,13 @@ class HuggingFaceChatBotCoder:
 
     def initialize_model(self):
         self.logger.info("Initializing Model ...")
-        generation_config = GenerationConfig.from_pretrained(self.llm_config.model)
+        # generation_config = GenerationConfig.from_pretrained(self.llm_config.model)
         self.tokenizer = AutoTokenizer.from_pretrained(self.llm_config.model, model_max_length=self.llm_config.model_max_length, trust_remote_code=True)
-        streamer = TextStreamer(self.tokenizer, skip_prompt=True)
+        if self.server_mode:
+            self.streamer = TextIteratorStreamer(self.tokenizer, timeout=10., skip_prompt=True, skip_special_tokens=True)
+        else:
+            self.streamer = TextStreamer(self.tokenizer, skip_prompt=True)
+
         if self.gpu:
             self.model = AutoModelForCausalLM.from_pretrained(self.llm_config.model, trust_remote_code=True).to(self.device)
             self.torch_dtype = torch.float16
@@ -161,13 +168,13 @@ class HuggingFaceChatBotCoder:
             temperature=self.llm_config.temperature,
             top_p=self.llm_config.top_p,
             # top_k=self.llm_config.top_k,
-            generation_config=generation_config,
+            # generation_config=generation_config,
             pad_token_id=self.tokenizer.eos_token_id,
             device=self.device,
             # do_sample=self.llm_config.do_sample,
             torch_dtype=self.torch_dtype,
             # stopping_criteria=stopping_criteria,
-            streamer=streamer,
+            streamer=self.streamer,
             model_kwargs={"offload_folder": "offload"},
         )
         handler = [MyCustomHandler()] if self.show_callback else None
@@ -183,7 +190,7 @@ class HuggingFaceChatBotCoder:
             text = input("<human>: ")
 
         # end conversation if user wishes so
-        if text.lower().strip() in ["bye", "quit", "exit"] and not self.gui_mode:
+        if text.lower().strip() in ["bye", "quit", "exit"] and not self.server_mode:
             # turn flag on
             self.end_chat = True
             # a closing comment
@@ -196,7 +203,7 @@ class HuggingFaceChatBotCoder:
 
     @timer_decorator
     def bot_response(self) -> str:
-        if self.inputs.lower().strip() in ["bye", "quit", "exit"] and self.gui_mode:
+        if self.inputs.lower().strip() in ["bye", "quit", "exit"] and self.server_mode:
             # a closing comment
             answer = "<bot>: See you soon! Bye!"
             print(f"<bot>: {answer}")
