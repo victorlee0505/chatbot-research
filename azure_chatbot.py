@@ -156,6 +156,7 @@ class AzureOpenAiChatBot:
                 openai_api_base=openai.api_base,
                 openai_api_version=openai.api_version,
                 openai_api_key=openai.api_key,
+                streaming=True,
             )
         else:
             self.logger.info(f"Open Chat = False!")
@@ -163,6 +164,7 @@ class AzureOpenAiChatBot:
                 deployment_name=deployment_name,
                 callbacks=callbacks,
                 openai_api_version=openai.api_version,
+                streaming=True,
                 model_kwargs={
                     "api_key": openai.api_key,
                     "api_base": openai.api_base,

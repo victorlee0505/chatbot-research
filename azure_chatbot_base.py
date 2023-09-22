@@ -79,21 +79,22 @@ class AzureOpenAiChatBotBase:
 
     def initialize_model(self):
         self.logger.info("Initializing Model ...")
-        callbacks = [StreamingStdOutCallbackHandler()] if self.show_stream else []
+        callbacks = []
+        callbacks = callbacks.append(StreamingStdOutCallbackHandler()) if self.show_stream else callbacks
         self.llm = AzureChatOpenAI(
             deployment_name=deployment_name,
-            callbacks=callbacks,
             openai_api_type=openai.api_type,
             openai_api_base=openai.api_base,
             openai_api_version=openai.api_version,
             openai_api_key=openai.api_key,
+            streaming=True,
         )
 
         memory = ConversationSummaryBufferMemory(
             llm=self.llm,
             max_token_limit=1000,
         )
-        self.qa = ConversationChain(llm=self.llm, memory=memory, verbose=False)
+        self.qa = ConversationChain(llm=self.llm, memory=memory, verbose=False, callbacks=callbacks)
 
     def count_tokens(self, chain, query):
         with get_openai_callback() as cb:
