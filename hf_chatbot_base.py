@@ -203,7 +203,7 @@ class HuggingFaceChatBotBase:
         self.llm = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
 
         if self.disable_mem:
-            self.qa = LLMChain(llm=self.llm, prompt=NO_MEM_PROMPT, verbose=False)
+            self.qa = LLMChain(llm=self.llm, prompt=self.llm_config.prompt_no_mem_template, verbose=False)
         else:
             memory = ConversationSummaryBufferMemory(
                 llm=self.llm,
@@ -263,7 +263,7 @@ class HuggingFaceChatBotBase:
         self.llm = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
 
         if self.disable_mem:
-            self.qa = LLMChain(llm=self.llm, prompt=NO_MEM_PROMPT, verbose=False)
+            self.qa = LLMChain(llm=self.llm, prompt=self.llm_config.prompt_no_mem_template, verbose=False)
         else:
             memory = ConversationSummaryBufferMemory(
                 llm=self.llm,

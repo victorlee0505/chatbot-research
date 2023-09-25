@@ -267,7 +267,19 @@ class HuggingFaceChatBotChroma:
             human_prefix=self.llm_config.human_prefix,
         )
 
-        if not self.disable_mem:
+        if self.disable_mem:
+            print(f"disable_mem: {self.disable_mem}")
+            self.qa = RetrievalQA.from_llm(
+                llm=self.llm,
+                # chain_type="stuff",
+                retriever=retriever,
+                # memory=memory,
+                prompt=self.llm_config.prompt_qa_template,
+                # combine_docs_chain_kwargs={"prompt": QA_PROMPT_DOCUMENT_CHAT},
+                # get_chat_history=lambda h: h,
+                return_source_documents=self.show_source,
+            )
+        else:
             print(f"disable_mem: {self.disable_mem}")
             self.qa = ConversationalRetrievalChain.from_llm(
                 llm=self.llm,
@@ -278,19 +290,8 @@ class HuggingFaceChatBotChroma:
                 get_chat_history=lambda h: h,
                 return_source_documents=self.show_source,
             )
-        else:
             # still WIP, looks like it still answering outside of the context
-            print(f"disable_mem: {self.disable_mem}")
-            self.qa = RetrievalQA.from_llm(
-                llm=self.llm,
-                # chain_type="stuff",
-                retriever=retriever,
-                # memory=memory,
-                prompt=QA_PROMPT_DOCUMENT_CHAT,
-                # combine_docs_chain_kwargs={"prompt": QA_PROMPT_DOCUMENT_CHAT},
-                # get_chat_history=lambda h: h,
-                return_source_documents=self.show_source,
-            )
+            
 
     def initialize_gguf_model(self):
         self.logger.info("Initializing Model ...")
@@ -380,7 +381,7 @@ class HuggingFaceChatBotChroma:
                 # chain_type="stuff",
                 retriever=retriever,
                 # memory=memory,
-                prompt=QA_PROMPT_DOCUMENT_CHAT,
+                prompt=self.llm_config.prompt_qa_template,
                 # combine_docs_chain_kwargs={"prompt": QA_PROMPT_DOCUMENT_CHAT},
                 # get_chat_history=lambda h: h,
                 return_source_documents=self.show_source,
