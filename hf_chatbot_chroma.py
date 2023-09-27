@@ -210,7 +210,7 @@ class HuggingFaceChatBotChroma:
 
         tokenizer = AutoTokenizer.from_pretrained(self.llm_config.model, model_max_length=self.llm_config.model_max_length)
         if self.server_mode:
-            self.streamer = TextIteratorStreamer(tokenizer, timeout=10., skip_prompt=True, skip_special_tokens=True)
+            self.streamer = TextIteratorStreamer(tokenizer, timeout=None, skip_prompt=True, skip_special_tokens=True)
         else:
             self.streamer = TextStreamer(tokenizer, skip_prompt=True)
 
@@ -328,7 +328,7 @@ class HuggingFaceChatBotChroma:
         tokenizer = ctransformers.AutoTokenizer.from_pretrained(model)
 
         if self.server_mode:
-            self.streamer = TextIteratorStreamer(tokenizer, timeout=10., skip_prompt=True, skip_special_tokens=True)
+            self.streamer = TextIteratorStreamer(tokenizer, timeout=None, skip_prompt=True, skip_special_tokens=True)
         else:
             self.streamer = TextStreamer(tokenizer, skip_prompt=True)
 

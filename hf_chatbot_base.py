@@ -92,6 +92,7 @@ class HuggingFaceChatBotBase:
         self.device = None
         self.server_mode = server_mode
         self.llm = None
+        self.tokenizer = None
         self.streamer = None
         self.qa = None
         self.chat_history = []
@@ -153,11 +154,11 @@ class HuggingFaceChatBotBase:
     def initialize_model(self):
         self.logger.info("Initializing Model ...")
         generation_config = GenerationConfig.from_pretrained(self.llm_config.model)
-        tokenizer = AutoTokenizer.from_pretrained(self.llm_config.model, model_max_length=self.llm_config.model_max_length)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.llm_config.model, model_max_length=self.llm_config.model_max_length)
         if self.server_mode:
-            self.streamer = TextIteratorStreamer(tokenizer, timeout=10., skip_prompt=True, skip_special_tokens=True)
+            self.streamer = TextIteratorStreamer(self.tokenizer, timeout=None, skip_prompt=True, skip_special_tokens=True)
         else:
-            self.streamer = TextStreamer(tokenizer, skip_prompt=True)
+            self.streamer = TextStreamer(self.tokenizer, skip_prompt=True)
         if self.gpu:
             model = AutoModelForCausalLM.from_pretrained(self.llm_config.model)
             model.half().cuda()
@@ -168,12 +169,12 @@ class HuggingFaceChatBotBase:
 
         if self.gpu:
             stop_words_ids = [
-                tokenizer(stop_word, return_tensors="pt").to('cuda')["input_ids"].squeeze()
+                self.tokenizer(stop_word, return_tensors="pt").to('cuda')["input_ids"].squeeze()
                 for stop_word in self.llm_config.stop_words
             ]
         else:
             stop_words_ids = [
-                tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
+                self.tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
                 for stop_word in self.llm_config.stop_words
             ]
         stopping_criteria = StoppingCriteriaList(
@@ -183,14 +184,14 @@ class HuggingFaceChatBotBase:
         pipe = pipeline(
             "text-generation",
             model=model,
-            tokenizer=tokenizer,
+            tokenizer=self.tokenizer,
             max_new_tokens=self.llm_config.max_new_tokens,
             temperature=self.llm_config.temperature,
             top_p=self.llm_config.top_p,
             top_k=self.llm_config.top_k,
             generation_config=generation_config,
             repetition_penalty=1.2,
-            pad_token_id=tokenizer.eos_token_id,
+            pad_token_id=self.tokenizer.eos_token_id,
             device=self.device,
             do_sample=self.llm_config.do_sample,
             torch_dtype=torch_dtype,
@@ -237,7 +238,7 @@ class HuggingFaceChatBotBase:
         tokenizer = ctransformers.AutoTokenizer.from_pretrained(model)
 
         if self.server_mode:
-            self.streamer = TextIteratorStreamer(tokenizer, timeout=10., skip_prompt=True, skip_special_tokens=True)
+            self.streamer = TextIteratorStreamer(tokenizer, timeout=None, skip_prompt=True, skip_special_tokens=True)
         else:
             self.streamer = TextStreamer(tokenizer, skip_prompt=True)
 

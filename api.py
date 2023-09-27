@@ -11,6 +11,8 @@ from fastapi.responses import StreamingResponse
 
 from entities import (
     GenerateStreamRequest,
+    TokenizeRequest,
+    TokenizeResponse,
     StreamRequest,
     )
 from hf_chatbot_base import HuggingFaceChatBotBase
@@ -101,6 +103,10 @@ def run_generation(prompt, llama: HuggingFaceChatBotBase):
     # llama.pipe(prompt)[0]['generated_text']
     llama.user_input(prompt)
     llama.bot_response()
+
+@router.post("/tokenize", response_model=TokenizeResponse)
+async def tokenize(request: TokenizeRequest, llama: HuggingFaceChatBotBase = Depends(_get_llama)):
+    return TokenizeResponse(tokens=llama.tokenizer.tokenize(request.text))
 
 if __name__ == '__main__':
 

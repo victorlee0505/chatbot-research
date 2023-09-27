@@ -135,7 +135,7 @@ class HuggingFaceChatBotCoder:
         # generation_config = GenerationConfig.from_pretrained(self.llm_config.model)
         self.tokenizer = AutoTokenizer.from_pretrained(self.llm_config.model, model_max_length=self.llm_config.model_max_length, trust_remote_code=True)
         if self.server_mode:
-            self.streamer = TextIteratorStreamer(self.tokenizer, timeout=10., skip_prompt=True, skip_special_tokens=True)
+            self.streamer = TextIteratorStreamer(self.tokenizer, timeout=None, skip_prompt=True, skip_special_tokens=True)
         else:
             self.streamer = TextStreamer(self.tokenizer, skip_prompt=True)
 
