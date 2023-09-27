@@ -235,15 +235,15 @@ class HuggingFaceChatBotBase:
             stream=True,
             gpu_layers=self.gpu_layers
             )
-        tokenizer = ctransformers.AutoTokenizer.from_pretrained(model)
+        self.tokenizer = ctransformers.AutoTokenizer.from_pretrained(model)
 
         if self.server_mode:
-            self.streamer = TextIteratorStreamer(tokenizer, timeout=None, skip_prompt=True, skip_special_tokens=True)
+            self.streamer = TextIteratorStreamer(self.tokenizer, timeout=None, skip_prompt=True, skip_special_tokens=True)
         else:
-            self.streamer = TextStreamer(tokenizer, skip_prompt=True)
+            self.streamer = TextStreamer(self.tokenizer, skip_prompt=True)
 
         stop_words_ids = [
-                tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
+                self.tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
                 for stop_word in self.llm_config.stop_words
             ]
         stopping_criteria = StoppingCriteriaList(
@@ -252,10 +252,10 @@ class HuggingFaceChatBotBase:
         pipe = pipeline(
             "text-generation",
             model=model,
-            tokenizer=tokenizer,
+            tokenizer=self.tokenizer,
             max_new_tokens=self.llm_config.max_new_tokens,
-            pad_token_id=tokenizer.eos_token_id,
-            eos_token_id=tokenizer.convert_tokens_to_ids(self.llm_config.eos_token_id) if self.llm_config.eos_token_id is not None else None,
+            pad_token_id=self.tokenizer.eos_token_id,
+            eos_token_id=self.tokenizer.convert_tokens_to_ids(self.llm_config.eos_token_id) if self.llm_config.eos_token_id is not None else None,
             streamer=self.streamer,
             model_kwargs={"offload_folder": "offload"},
         )
