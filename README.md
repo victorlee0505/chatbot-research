@@ -13,13 +13,8 @@ If you delete model in .cache (ex. save disk space), model will be re-download n
 # Environment Setup
 In order to set your environment up to run the code here, first install all requirements:
 
-I recommend using python 3.9, but you may try 3.10 or 3.11
+I recommend using python 3.10 (best support for torch), but you may try 3.9 or 3.11
 
-```shell
-pip install -r requirements.txt
-```
-
-Please also install pytorch
 ```shell
 pip3 install torch torchvision torchaudio
 ```
@@ -27,6 +22,10 @@ If you wish to utilize CUDA (make sure you have cuda driver installed and have a
 
 ```shell
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+```
+
+```shell
+pip install -r requirements.txt
 ```
 
 # Environment Variable
@@ -50,7 +49,7 @@ For HuggingFace, nothing.
 
 # How to run
 
-### `Although start up chatbot will auto ingest (from default path ./source_documents), I highy recommand you to do the ingest separately where you can choose to use OpenAI sbuscription, enable private local offline embedding, override the source path and enable CUDA for ingestion`
+### `Although start up chroma chatbot will auto ingest (from default path ./source_documents), I highy recommand you to do the ingest separately where you can choose to use OpenAI sbuscription, enable private local offline embedding, override the source path and enable CUDA for ingestion`
 
 ## Just run ingest.py
 ```shell
@@ -68,39 +67,56 @@ python ingest.py
 ### `delete ./storage_azure or ./storage_hf will remove vector storage so you can start over`
 ## Just run azure_chatbot.py or azure_chatbot_base.py
 ```shell
-python azure_chatbot.py
 python azure_chatbot_base.py
+python azure_chatbot.py
 ```
-- Base = chat only and do not ingest any document.
+- azure_chatbot_base = chat only like ChatGPT.
+- azure_chatbot.py = chat and ingest like PrivateGPT.
 - it will go to source_document folder and ingest data and persist using chroma (i took it from PrivateGPT).
 - if chroma db is found, DATA will not be reloaded.
 - It uses OpenAIEmbeddings which also require your `Azure OpenAI Environment Variable`
-- it will then initialize the model and start interacting
 
 ## Just run openai_chatbot.py
 ```shell
 python openai_chatbot.py
 ```
+- openai_chatbot = chat and ingest like PrivateGPT.
 - The only chat mode is CLOSED so it does not answer anything outside of the context. (don't know how to make it open-ended)
 - it will go to source_document folder and ingest data and persist using chroma (i took it from PrivateGPT).
 - if chroma db is found, DATA will not be reloaded.
 - It uses OpenAIEmbeddings which also require your `OpenAI_API_KEY Environment Variable`
-- it will then initialize the model and start interacting
 
-## Just run hf_redpajama_chatbot.py
+## Just run hf_chatbot_*.py
+### Models are downloaded from HuggingFace, so it will take a while to download the first time you run it.
+### If you delete the model in .cache, it will re-download next time you run it.
+### Please check LLMConfig.py for more details. 
+### Running LLM locally require high hardware requriement.
 ```shell
-python hf_redpajama_chatbot.py
-python hf_redpajama_chatbot_base.py
+python hf_chatbot_base.py
+python hf_chatbot_chroma.py
+python hf_chatbot_coder.py
 ```
-- Base = chat only and do not ingest any document.
+- hf_chatbot_base = chat only and do not ingest any document.
+- hf_chatbot_chroma = chat and ingest like PrivateGPT.
+- hf_chatbot_coder = chat only with model specialized for coding.
 - it will go to source_document folder and ingest data and persist using chroma (i took it from PrivateGPT).
 - if chroma db is found, DATA will not be reloaded.
 - It uses HuggingFaceEmbeddings (require internet to download sentence_transformers model)
 - it will then initialize the model (first time require internet to download model) and start interacting
 
 ## GUI
+### Streamlit-chat is used for GUI interface for easy interaction
+### allow you to choose between Azure OpenAI, OpenAI, HuggingFace
+### allow you to choose between different LLM from HuggingFace
 ```shell
 streamlit run app.py
+```
+
+## FastAPI
+### FastAPI is used for API interface for easy interaction
+### allow you to choose between different LLM from HuggingFace
+```shell
+python api.py
 ```
 
 # Disclaimer
