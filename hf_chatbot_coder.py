@@ -6,9 +6,10 @@ from typing import Dict, Union, Any, List
 
 import numpy as np
 import torch
-from langchain import HuggingFacePipeline, LLMChain, PromptTemplate
+from langchain.llms import HuggingFacePipeline
+from langchain import HuggingFacePipeline
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.chains import ConversationChain
+from langchain.chains import ConversationChain, LLMChain
 from langchain.memory import ConversationSummaryBufferMemory
 from transformers import (
     AutoModelForCausalLM,
@@ -21,8 +22,9 @@ from transformers import (
     TextIteratorStreamer,
     pipeline,
 )
+from langchain.prompts import PromptTemplate
 
-from hf_llm_config import CODEGEN25_7B, CODEGEN2_1B, CODEGEN2_4B, SANTA_CODER_1B, WIZARDCODER_3B, WIZARDCODER_PY_7B, LLMConfig
+from hf_llm_config import CODEGEN25_7B, CODEGEN2_1B, CODEGEN2_4B, SANTA_CODER_1B, WIZARDCODER_3B, WIZARDCODER_15B_Q8, WIZARDCODER_PY_7B, LLMConfig
 
 class MyCustomHandler(BaseCallbackHandler):
     def on_llm_start(

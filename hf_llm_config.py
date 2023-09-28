@@ -1,4 +1,4 @@
-from langchain import BasePromptTemplate, PromptTemplate
+from langchain.prompts import BasePromptTemplate, PromptTemplate
 from langchain.chains.conversation.prompt import PROMPT
 
 from hf_prompts import (
@@ -169,9 +169,9 @@ LMSYS_VICUNA_1_5_16K_7B_Q8 = LLMConfig(
     max_mem_tokens=2000,
 )
 
-LMSYS_VICUNA_1_5_13B_Q8 = LLMConfig(
-    model="TheBloke/vicuna-7B-v1.5-GGUF",
-    model_file="vicuna-13b-v1.5.Q8_0.gguf",
+LMSYS_VICUNA_1_5_13B_Q6 = LLMConfig(
+    model="TheBloke/vicuna-13B-v1.5-GGUF",
+    model_file="vicuna-13b-v1.5.Q6_K.gguf",
     model_type="llama",
     ai_prefix="ASSISTANT:",
     human_prefix="USER:",
@@ -183,9 +183,9 @@ LMSYS_VICUNA_1_5_13B_Q8 = LLMConfig(
     max_mem_tokens=600,
 )
 
-LMSYS_VICUNA_1_5_16K_13B_Q8 = LLMConfig(
+LMSYS_VICUNA_1_5_16K_13B_Q6 = LLMConfig(
     model="TheBloke/vicuna-13B-v1.5-16K-GGUF",
-    model_file="vicuna-13b-v1.5-16k.Q8_0.gguf",
+    model_file="vicuna-13b-v1.5-16k.Q6_K.gguf",
     model_type="llama",
     ai_prefix="ASSISTANT:",
     human_prefix="USER:",
@@ -262,7 +262,33 @@ WIZARDCODER_3B = LLMConfig(
     prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
     prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
     prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    temperature=0.1,
+    model_max_length=8192,
+    max_new_tokens=2048,
+    max_mem_tokens=600,
+    temperature=1,
+    do_sample=False,
+    top_p=1,
+    stop_words=["</s>"],
+    eos_token_id=["</s>"],
+)
+
+WIZARDCODER_15B_Q8 = LLMConfig(
+    model="TheBloke/WizardCoder-15B-1.0-GGML",
+    model_file="WizardCoder-15B-1.0.ggmlv3.q8_0.bin",
+    model_type="gpt_bigcode",
+    ai_prefix="Response:",
+    human_prefix="Instruction:",
+    prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
+    prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
+    prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
+    model_max_length=8192,
+    max_new_tokens=2048,
+    max_mem_tokens=600,
+    temperature=1,
+    do_sample=False,
+    top_p=1,
+    stop_words=["</s>"],
+    eos_token_id=["</s>"],
 )
 
 WIZARDCODER_PY_7B = LLMConfig(
@@ -272,21 +298,88 @@ WIZARDCODER_PY_7B = LLMConfig(
     prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
     prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
     prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    temperature=0.1,
+    model_max_length=8192,
+    max_new_tokens=2048,
+    max_mem_tokens=600,
+    temperature=1,
+    do_sample=False,
+    top_p=1,
+    stop_words=["</s>"],
+    eos_token_id=["</s>"],
 )
 
-STARCHAT_BETA_16B_Q8 = LLMConfig(
+WIZARDCODER_PY_7B_Q6 = LLMConfig(
+    model="TheBloke/WizardCoder-Python-7B-V1.0-GGUF",
+    model_file="wizardcoder-python-7b-v1.0.Q6_K.gguf",
+    model_type="gpt_bigcode",
+    ai_prefix="Response:",
+    human_prefix="Instruction:",
+    prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
+    prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
+    prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
+    model_max_length=8192,
+    max_new_tokens=2048,
+    max_mem_tokens=600,
+    temperature=1,
+    do_sample=False,
+    top_p=1,
+    stop_words=["</s>"],
+    eos_token_id=["</s>"],
+)
+
+WIZARDCODER_PY_13B_Q6 = LLMConfig(
+    model="TheBloke/WizardCoder-Python-13B-V1.0-GGUF",
+    model_file="wizardcoder-python-13b-v1.0.Q6_K.gguf",
+    model_type="gpt_bigcode",
+    ai_prefix="Response:",
+    human_prefix="Instruction:",
+    prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
+    prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
+    prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
+    model_max_length=8192,
+    max_new_tokens=2048,
+    max_mem_tokens=600,
+    temperature=1,
+    do_sample=False,
+    top_p=1,
+    stop_words=["</s>"],
+    eos_token_id=["</s>"],
+)
+
+WIZARDCODER_PY_34B_Q5 = LLMConfig(
+    model="TheBloke/WizardCoder-Python-34B-V1.0-GGUF",
+    model_file="wizardcoder-python-34b-v1.0.Q5_K_M.gguf",
+    model_type="gpt_bigcode",
+    ai_prefix="Response:",
+    human_prefix="Instruction:",
+    prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
+    prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
+    prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
+    model_max_length=8192,
+    max_new_tokens=2048,
+    max_mem_tokens=600,
+    temperature=1,
+    do_sample=False,
+    top_p=1,
+    stop_words=["</s>"],
+    eos_token_id=["</s>"],
+)
+
+STARCHAT_BETA_16B_Q5 = LLMConfig(
     model="TheBloke/starchat-beta-GGML",
-    model_file="starchat-beta.ggmlv3.q8_0.bin",
+    model_file="starchat-beta.ggmlv3.q5_1.bin",
     model_type="gpt_bigcode",
     ai_prefix="<|assistant|>",
-    human_prefix="<|system|>\n<|end|>\n<|user|>",
+    human_prefix="<|system|> Below is a conversation between a human user and a helpful AI coding assistant. <|end|>\n<|user|>",
     prompt_template=STARCHAT_PROMPT_TEMPLATE,
     prompt_no_mem_template=STARCHAT_NO_MEM_PROMPT_TEMPLATE,
-    stop_words=["<|system|>"],
-    model_max_length=4096,
-    max_new_tokens=2000,
+    model_max_length=8192,
+    max_new_tokens=2048,
     max_mem_tokens=600,
-    temperature=0.1,
+    temperature=0.2,
+    do_sample=True,
+    top_k=50,
+    top_p=0.95,
+    stop_words=["<|end|>"],
     eos_token_id=["<|end|>"],
 )

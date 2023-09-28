@@ -1,4 +1,4 @@
-from langchain.prompts.prompt import PromptTemplate
+from langchain.prompts import PromptTemplate
 
 # Chatbot Base
 memory_template = """The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
@@ -66,16 +66,16 @@ falcon_qa_template = qa_prompt_template.replace("{placeholder}", falcon_prompt)
 FALCON_QA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["context", "input"], template=falcon_qa_template)
 
 wizard_coder_prompt = """
-### Instruction:\n{instruction}\n\n
+### Instruction:\n{input}\n\n
 ### Response:"""
 
 wizard_coder_prompt_template = """Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n
 {placeholder}
 """
-falcon_template = wizard_coder_prompt_template.replace("{placeholder}", wizard_coder_prompt)
-WIZARD_CODER_PROMPT_TEMPLATE = PromptTemplate(input_variables=["instruction"], template=falcon_template)
+wizard_coder_template = wizard_coder_prompt_template.replace("{placeholder}", wizard_coder_prompt)
+WIZARD_CODER_PROMPT_TEMPLATE = PromptTemplate(input_variables=["input"], template=wizard_coder_template)
 
-starchat_prompt = "<|system|>\n<|end|>\n<|user|>\n{input}<|end|>\n<|assistant|>"
+starchat_prompt = "<|system|> Below is a conversation between a human user and a helpful AI coding assistant. <|end|>\n<|user|> {input} <|end|>\n<|assistant|>"
 starchat_template = memory_template.replace("{placeholder}", starchat_prompt)
 STARCHAT_PROMPT_TEMPLATE = PromptTemplate(input_variables=["history", "input"], template=starchat_template)
 STARCHAT_NO_MEM_PROMPT_TEMPLATE = PromptTemplate(input_variables=["input"], template=starchat_prompt)

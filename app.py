@@ -1,6 +1,5 @@
 import gc
-import os
-import openai
+
 import streamlit as st
 import torch
 from streamlit_chat import message
@@ -22,12 +21,16 @@ from hf_llm_config import (
     LMSYS_LONGCHAT_1_5_32K_7B,
     LMSYS_VICUNA_1_5_7B_Q8,
     LMSYS_VICUNA_1_5_16K_7B_Q8,
-    LMSYS_VICUNA_1_5_13B_Q8,
-    LMSYS_VICUNA_1_5_16K_13B_Q8,
+    LMSYS_VICUNA_1_5_13B_Q6,
+    LMSYS_VICUNA_1_5_16K_13B_Q6,
     SANTA_CODER_1B,
+    STARCHAT_BETA_16B_Q5,
     WIZARDCODER_3B,
+    WIZARDCODER_15B_Q8,
     WIZARDCODER_PY_7B,
-    STARCHAT_BETA_16B_Q8,
+    WIZARDCODER_PY_7B_Q6,
+    WIZARDCODER_PY_13B_Q6,
+    WIZARDCODER_PY_34B_Q5,
     WIZARDLM_FALCON_40B_Q6K
 )
 from openai_chatbot import OpenAiChatBot
@@ -50,9 +53,15 @@ llm_chat_options = {
     "Vicuna 1.5 7B 32K LLAMA2": LMSYS_LONGCHAT_1_5_32K_7B,
     "Vicuna 1.5 7B LLAMA2 Q8 GGUF": LMSYS_VICUNA_1_5_7B_Q8,
     "Vicuna 1.5 7B 16K LLAMA2 Q8 GGUF": LMSYS_VICUNA_1_5_16K_7B_Q8,
-    "Vicuna 1.5 13B LLAMA2 Q8 GGUF": LMSYS_VICUNA_1_5_13B_Q8,
-    "Vicuna 1.5 13B 16K LLAMA2 Q8 GGUF": LMSYS_VICUNA_1_5_16K_13B_Q8,
-    "StarChat Beta 16B Q8 GGUF": STARCHAT_BETA_16B_Q8,
+    "Vicuna 1.5 13B LLAMA2 Q8 GGUF": LMSYS_VICUNA_1_5_13B_Q6,
+    "Vicuna 1.5 13B 16K LLAMA2 Q8 GGUF": LMSYS_VICUNA_1_5_16K_13B_Q6,
+    "WizardCoder 3B": WIZARDCODER_3B,
+    "WizardCoder 15B Q8": WIZARDCODER_15B_Q8,
+    "WizardCoder Python 7B": WIZARDCODER_PY_7B,
+    "WizardCoder Python 7B Q6": WIZARDCODER_PY_7B_Q6,
+    "WizardCoder Python 13B Q6": WIZARDCODER_PY_13B_Q6,
+    "WizardCoder Python 34B Q5": WIZARDCODER_PY_34B_Q5,
+    "StarChat Beta 16B Q5 GGUF": STARCHAT_BETA_16B_Q5,
     "WizardLM Falcon 40B Q6K GGUF": WIZARDLM_FALCON_40B_Q6K,
 }
 
@@ -64,8 +73,8 @@ llm_chroma_options = {
     "Vicuna 1.5 7B 32K LLAMA2": LMSYS_LONGCHAT_1_5_32K_7B,
     "Vicuna 1.5 7B LLAMA2 Q8 GGUF": LMSYS_VICUNA_1_5_7B_Q8,
     "Vicuna 1.5 7B 16K LLAMA2 Q8 GGUF": LMSYS_VICUNA_1_5_16K_7B_Q8,
-    "Vicuna 1.5 13B LLAMA2 Q8 GGUF": LMSYS_VICUNA_1_5_13B_Q8,
-    "Vicuna 1.5 13B 16K LLAMA2 Q8 GGUF": LMSYS_VICUNA_1_5_16K_13B_Q8,
+    "Vicuna 1.5 13B LLAMA2 Q8 GGUF": LMSYS_VICUNA_1_5_13B_Q6,
+    "Vicuna 1.5 13B 16K LLAMA2 Q8 GGUF": LMSYS_VICUNA_1_5_16K_13B_Q6,
     "WizardLM Falcon 40B Q6K GGUF": WIZARDLM_FALCON_40B_Q6K,
 }
 

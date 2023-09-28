@@ -7,9 +7,9 @@ from typing import Dict, Union, Any, List
 import ctransformers
 import numpy as np
 import torch
-from langchain import HuggingFacePipeline, LLMChain
+from langchain.llms import HuggingFacePipeline
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.chains import ConversationChain
+from langchain.chains import ConversationChain, LLMChain
 from langchain.memory import ConversationSummaryBufferMemory
 from transformers import (
     AutoModelForCausalLM,
@@ -30,9 +30,16 @@ from hf_llm_config import (
     LMSYS_LONGCHAT_1_5_32K_7B,
     LMSYS_VICUNA_1_5_7B_Q8,
     LMSYS_VICUNA_1_5_16K_7B_Q8,
-    LMSYS_VICUNA_1_5_13B_Q8,
-    LMSYS_VICUNA_1_5_16K_13B_Q8,
-    STARCHAT_BETA_16B_Q8,
+    LMSYS_VICUNA_1_5_13B_Q6,
+    LMSYS_VICUNA_1_5_16K_13B_Q6,
+    SANTA_CODER_1B,
+    STARCHAT_BETA_16B_Q5,
+    WIZARDCODER_3B,
+    WIZARDCODER_15B_Q8,
+    WIZARDCODER_PY_7B,
+    WIZARDCODER_PY_7B_Q6,
+    WIZARDCODER_PY_13B_Q6,
+    WIZARDCODER_PY_34B_Q5,
     WIZARDLM_FALCON_40B_Q6K, 
     LLMConfig
 )
@@ -255,7 +262,8 @@ class HuggingFaceChatBotBase:
             tokenizer=self.tokenizer,
             max_new_tokens=self.llm_config.max_new_tokens,
             pad_token_id=self.tokenizer.eos_token_id,
-            eos_token_id=self.tokenizer.convert_tokens_to_ids(self.llm_config.eos_token_id) if self.llm_config.eos_token_id is not None else None,
+            # eos_token_id=self.tokenizer.convert_tokens_to_ids(self.llm_config.eos_token_id) if self.llm_config.eos_token_id is not None else None,
+            stopping_criteria=stopping_criteria,
             streamer=self.streamer,
             model_kwargs={"offload_folder": "offload"},
         )
@@ -365,10 +373,18 @@ if __name__ == "__main__":
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
 
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_13B_Q8, disable_mem=True, gpu_layers=10) # mem = 18GB
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q8, disable_mem=True, gpu_layers=10) # mem = 18GB
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 18GB
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 18GB
 
-    # bot = HuggingFaceChatBotBase(llm_config=STARCHAT_BETA_16B_Q8, disable_mem=True, gpu_layers=10) # mem = 23GB
+    # bot = HuggingFaceChatBotBase(llm_config=SANTA_CODER_1B, disable_mem=True, gpu_layers=10)
+    # bot = HuggingFaceChatBotBase(llm_config=STARCHAT_BETA_16B_Q5, disable_mem=True, gpu_layers=10) # mem = 23GB
+
+    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_3B, disable_mem=True, gpu_layers=10)
+    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_15B_Q8, disable_mem=True, gpu_layers=10) # mem = 23GB
+    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_7B, disable_mem=True, gpu_layers=10)
+    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_7B_Q6, disable_mem=True, gpu_layers=10) # mem = 9GB
+    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 14GB
+    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_34B_Q5, disable_mem=True, gpu_layers=10) # mem = 27GB
     
     # This one is not good at all
     # bot = HuggingFaceChatBotBase(llm_config=WIZARDLM_FALCON_40B_Q6K, disable_mem=True, gpu_layers=10) # mem = 45GB

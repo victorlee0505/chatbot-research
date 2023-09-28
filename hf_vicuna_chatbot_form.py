@@ -7,7 +7,7 @@ from typing import Dict, Union, Any, List
 
 import numpy as np
 import torch
-from langchain import HuggingFacePipeline
+from langchain.llms import HuggingFacePipeline
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import LLMChain, create_tagging_chain_pydantic
 from transformers import (

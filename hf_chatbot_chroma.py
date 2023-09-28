@@ -8,7 +8,7 @@ import chromadb
 import ctransformers
 import numpy as np
 import torch
-from langchain import HuggingFacePipeline
+from langchain.llms import HuggingFacePipeline
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import ConversationalRetrievalChain, RetrievalQA
@@ -34,9 +34,9 @@ from hf_llm_config import (
     LMSYS_LONGCHAT_1_5_32K_7B,
     LMSYS_VICUNA_1_5_7B_Q8,
     LMSYS_VICUNA_1_5_16K_7B_Q8,
-    LMSYS_VICUNA_1_5_13B_Q8,
-    LMSYS_VICUNA_1_5_16K_13B_Q8,
-    STARCHAT_BETA_16B_Q8,
+    LMSYS_VICUNA_1_5_13B_Q6,
+    LMSYS_VICUNA_1_5_16K_13B_Q6,
+    STARCHAT_BETA_16B_Q5,
     WIZARDLM_FALCON_40B_Q6K, 
     LLMConfig
 )
@@ -345,7 +345,8 @@ class HuggingFaceChatBotChroma:
             tokenizer=tokenizer,
             max_new_tokens=self.llm_config.max_new_tokens,
             pad_token_id=tokenizer.eos_token_id,
-            eos_token_id=tokenizer.convert_tokens_to_ids(self.llm_config.eos_token_id) if self.llm_config.eos_token_id is not None else None,
+            # eos_token_id=tokenizer.convert_tokens_to_ids(self.llm_config.eos_token_id) if self.llm_config.eos_token_id is not None else None,
+            stopping_criteria=stopping_criteria,
             streamer=self.streamer,
             model_kwargs={"offload_folder": "offload"},
         )
