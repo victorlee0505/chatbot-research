@@ -32,7 +32,6 @@ from hf_llm_config import (
     LMSYS_VICUNA_1_5_16K_7B_Q8,
     LMSYS_VICUNA_1_5_13B_Q6,
     LMSYS_VICUNA_1_5_16K_13B_Q6,
-    SANTA_CODER_1B,
     STARCHAT_BETA_16B_Q5,
     WIZARDCODER_3B,
     WIZARDCODER_15B_Q8,
@@ -118,8 +117,13 @@ class HuggingFaceChatBotBase:
 
         if self.log_to_file:
             log_dir = "logs"
-            os.makedirs(log_dir, exist_ok=True)  
-            log_filename = f"{log_dir}/{self.llm_config.model}.log"
+            try:
+                os.makedirs(log_dir, exist_ok=True)
+            except Exception as e:
+                print(f"Error creating directory: {e}")
+            filename = self.llm_config.model.replace("/", "_")
+            print(f"Logging to file: {filename}.log")
+            log_filename = f"{log_dir}/{filename}.log"
             fh = logging.FileHandler(log_filename)
             fh.setLevel(logging.INFO)
             self.logger.addHandler(fh)
@@ -160,7 +164,10 @@ class HuggingFaceChatBotBase:
 
     def initialize_model(self):
         self.logger.info("Initializing Model ...")
-        generation_config = GenerationConfig.from_pretrained(self.llm_config.model)
+        try:
+            generation_config = GenerationConfig.from_pretrained(self.llm_config.model)
+        except Exception as e:
+            generation_config = None
         self.tokenizer = AutoTokenizer.from_pretrained(self.llm_config.model, model_max_length=self.llm_config.model_max_length)
         if self.server_mode:
             self.streamer = TextIteratorStreamer(self.tokenizer, timeout=None, skip_prompt=True, skip_special_tokens=True)
@@ -376,7 +383,6 @@ if __name__ == "__main__":
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 18GB
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 18GB
 
-    # bot = HuggingFaceChatBotBase(llm_config=SANTA_CODER_1B, disable_mem=True, gpu_layers=10)
     # bot = HuggingFaceChatBotBase(llm_config=STARCHAT_BETA_16B_Q5, disable_mem=True, gpu_layers=10) # mem = 23GB
 
     # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_3B, disable_mem=True, gpu_layers=10)

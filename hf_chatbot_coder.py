@@ -95,8 +95,13 @@ class HuggingFaceChatBotCoder:
 
         if self.log_to_file:
             log_dir = "logs"
-            os.makedirs(log_dir, exist_ok=True)  
-            log_filename = f"{log_dir}/{self.llm_config.model}.log"
+            try:
+                os.makedirs(log_dir, exist_ok=True)
+            except Exception as e:
+                print(f"Error creating directory: {e}")
+            filename = self.llm_config.model.replace("/", "_")
+            print(f"Logging to file: {filename}.log")
+            log_filename = f"{log_dir}/{filename}.log"
             fh = logging.FileHandler(log_filename)
             fh.setLevel(logging.INFO)
             self.logger.addHandler(fh)
