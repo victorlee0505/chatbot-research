@@ -1,8 +1,12 @@
+torch --index-url https://download.pytorch.org/whl/cu118
+torchvision --index-url https://download.pytorch.org/whl/cu118
+torchaudio --index-url https://download.pytorch.org/whl/cu118
+
 openai
 llama_index
 langchain
-transformers
-ctransformers
+ctransformers[cuda]
+transformers>=4.34.0
 xformers
 wheel
 azure-search-documents --pre

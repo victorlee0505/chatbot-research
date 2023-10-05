@@ -44,6 +44,12 @@ falcon_prompt = """
 User: {input}
 Assistant:"""
 
+mistral_openorca_prompt = """
+<|im_start|>user
+{input}<|im_end|>
+<|im_start|>assistant
+"""
+
 redpajama_template = memory_template.replace("{placeholder}", redpajama_prompt)
 REDPAJAMA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["history", "input"], template=redpajama_template)
 redpajama_no_mem_template = no_mem_template.replace("{placeholder}", redpajama_prompt)
@@ -74,6 +80,39 @@ wizard_coder_prompt_template = """Below is an instruction that describes a task.
 """
 wizard_coder_template = wizard_coder_prompt_template.replace("{placeholder}", wizard_coder_prompt)
 WIZARD_CODER_PROMPT_TEMPLATE = PromptTemplate(input_variables=["input"], template=wizard_coder_template)
+
+mistral_prompt_template = """
+<|im_start|>system
+The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
+
+Current conversation:
+{history}
+<|im_end|>
+
+{placeholder}
+"""
+
+mistral_no_mem_prompt_template = """
+<|im_start|>system
+The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
+<|im_end|>
+{placeholder}
+"""
+qa_prompt_template = """
+<|im_start|>system
+Use ONLY the context provided to answer the question at the end.
+If the context is not relevant, DO NOT try to use your own knowledge and simply say you don't know. 
+
+{context}
+<|im_end|>
+{placeholder}
+"""
+mistral_template = mistral_prompt_template.replace("{placeholder}", mistral_openorca_prompt)
+MISTRAL_PROMPT_TEMPLATE = PromptTemplate(input_variables=["history", "input"], template=mistral_template)
+mistral_no_mem_template = mistral_no_mem_prompt_template.replace("{placeholder}", mistral_openorca_prompt)
+MISTRAL_NO_MEM_PROMPT_TEMPLATE = PromptTemplate(input_variables=["input"], template=mistral_no_mem_template)
+mistral_qa_template = qa_prompt_template.replace("{placeholder}", mistral_openorca_prompt)
+MISTRAL_QA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["context", "input"], template=mistral_qa_template)
 
 starchat_prompt = "<|system|> Below is a conversation between a human user and a helpful AI coding assistant. <|end|>\n<|user|> {input} <|end|>\n<|assistant|>"
 starchat_template = memory_template.replace("{placeholder}", starchat_prompt)

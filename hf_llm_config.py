@@ -5,6 +5,9 @@ from hf_prompts import (
     FALCON_NO_MEM_PROMPT_TEMPLATE,
     FALCON_PROMPT_TEMPLATE,
     FALCON_QA_PROMPT_TEMPLATE,
+    MISTRAL_PROMPT_TEMPLATE,
+    MISTRAL_NO_MEM_PROMPT_TEMPLATE,
+    MISTRAL_QA_PROMPT_TEMPLATE,
     NO_MEM_PROMPT,
     QA_PROMPT_DOCUMENT_CHAT,
     REDPAJAMA_NO_MEM_PROMPT_TEMPLATE,
@@ -137,6 +140,34 @@ LMSYS_LONGCHAT_1_5_32K_7B = LLMConfig(
     model_max_length=32000,
     max_new_tokens=22000,
     max_mem_tokens=2000,
+)
+
+OPENORCA_MISTRAL_8K_7B = LLMConfig(
+    model="Open-Orca/Mistral-7B-OpenOrca",
+    ai_prefix="<|im_start|>assistant\n",
+    human_prefix="<|im_start|>user\n",
+    prompt_template=MISTRAL_PROMPT_TEMPLATE,
+    prompt_no_mem_template=MISTRAL_NO_MEM_PROMPT_TEMPLATE,
+    prompt_qa_template=MISTRAL_QA_PROMPT_TEMPLATE,
+    model_max_length=8192,
+    max_new_tokens=2048,
+    max_mem_tokens=600,
+    stop_words=["<|im_end|>"],
+)
+
+OPENORCA_MISTRAL_7B_Q5 = LLMConfig(
+    model="TheBloke/Mistral-7B-OpenOrca-GGUF",
+    model_file="mistral-7b-openorca.Q5_K_M.gguf",
+    model_type="mistral",
+    ai_prefix="<|im_start|>assistant\n",
+    human_prefix="<|im_start|>user\n",
+    prompt_template=MISTRAL_PROMPT_TEMPLATE,
+    prompt_no_mem_template=MISTRAL_NO_MEM_PROMPT_TEMPLATE,
+    prompt_qa_template=MISTRAL_QA_PROMPT_TEMPLATE,
+    model_max_length=8192,
+    max_new_tokens=2048,
+    max_mem_tokens=600,
+    stop_words=["<|im_end|>"],
 )
 
 # LLAMA 2 GGUF

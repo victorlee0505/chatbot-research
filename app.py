@@ -23,6 +23,8 @@ from hf_llm_config import (
     LMSYS_VICUNA_1_5_16K_7B_Q8,
     LMSYS_VICUNA_1_5_13B_Q6,
     LMSYS_VICUNA_1_5_16K_13B_Q6,
+    OPENORCA_MISTRAL_8K_7B,
+    OPENORCA_MISTRAL_7B_Q5,
     SANTA_CODER_1B,
     STARCHAT_BETA_16B_Q5,
     WIZARDCODER_3B,
@@ -47,6 +49,8 @@ st.set_page_config(
 llm_chat_options = {
     "RedPajama 3B": REDPAJAMA_3B,
     "RedPajama 7B": REDPAJAMA_7B,
+    "OpenOrca Mistral 7B Q5": OPENORCA_MISTRAL_7B_Q5,
+    "OpenOrca Mistral 8K 7B": OPENORCA_MISTRAL_8K_7B,
     "Vicuna 7B": VICUNA_7B,
     "Vicuna 1.5 7B LLAMA2": LMSYS_VICUNA_1_5_7B,
     "Vicuna 1.5 7B 16K LLAMA2": LMSYS_VICUNA_1_5_16K_7B,
@@ -67,6 +71,8 @@ llm_chat_options = {
 
 llm_chroma_options = {
     "RedPajama 3B": REDPAJAMA_3B,
+    "OpenOrca Mistral 7B Q5": OPENORCA_MISTRAL_7B_Q5,
+    "OpenOrca Mistral 8K 7B": OPENORCA_MISTRAL_8K_7B,
     "Vicuna 7B": VICUNA_7B,
     "Vicuna 1.5 7B LLAMA2": LMSYS_VICUNA_1_5_7B,
     "Vicuna 1.5 7B 16K LLAMA2": LMSYS_VICUNA_1_5_16K_7B,

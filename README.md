@@ -1,32 +1,60 @@
 # Chatbot-research
-Experimental research project to explore way build chatbot with Azure OpenAI as well as offline with HuggingFace.
+Experimental research project to explore way build chatbot with Azure OpenAI as well as open source model from HuggingFace.
 
-I will be using [RedPajama-INCITE-Chat-3B-v1](https://huggingface.co/togethercomputer/RedPajama-INCITE-Chat-3B-v1) for HuggingFace Inference because it is small and efficient. 
+## Models List
+These are the model the currently configured in the project. You can add more model by adding it to the hf_llm_config.py and their corresponding hf_prompts.py
+- [togethercomputer/RedPajama-INCITE-Chat-3B-v1](https://huggingface.co/togethercomputer/RedPajama-INCITE-Chat-3B-v1)
+- [togethercomputer/RedPajama-INCITE-7B-Chat](https://huggingface.co/togethercomputer/RedPajama-INCITE-7B-Chat)
+- [TheBloke/Wizard-Vicuna-7B-Uncensored-HF](https://huggingface.co/TheBloke/Wizard-Vicuna-7B-Uncensored-HF)
+- [lmsys/vicuna-7b-v1.5](https://huggingface.co/lmsys/vicuna-7b-v1.5)
+- [lmsys/vicuna-7b-v1.5-16k](https://huggingface.co/lmsys/vicuna-7b-v1.5-16k)
+- [lmsys/longchat-7b-v1.5-32k](https://huggingface.co/lmsys/longchat-7b-v1.5-32k)
+- [Open-Orca/Mistral-7B-OpenOrca](https://huggingface.co/Open-Orca/Mistral-7B-OpenOrca)
+- [TheBloke/vicuna-7B-v1.5-GGUF](https://huggingface.co/TheBloke/vicuna-7B-v1.5-GGUF)
+- [TheBloke/vicuna-7B-v1.5-16K-GGUF](https://huggingface.co/TheBloke/vicuna-7B-v1.5-16K-GGUF)
+- [TheBloke/vicuna-13B-v1.5-GGUF](https://huggingface.co/TheBloke/vicuna-13B-v1.5-GGUF)
+- [TheBloke/vicuna-13B-v1.5-16K-GGUF](https://huggingface.co/TheBloke/vicuna-13B-v1.5-16K-GGUF)
+- [TheBloke/WizardLM-Uncensored-Falcon-40B-GGML](https://huggingface.co/TheBloke/WizardLM-Uncensored-Falcon-40B-GGML)
+- [bigcode/santacoder](https://huggingface.co/bigcode/santacoder)
+- [Salesforce/codegen2-1B](https://huggingface.co/Salesforce/codegen2-1B)
+- [Salesforce/codegen2-3_7B](https://huggingface.co/Salesforce/codegen2-3_7B)
+- [Salesforce/codegen25-7b-multi](https://huggingface.co/Salesforce/codegen25-7b-multi)
+- [WizardLM/WizardCoder-3B-V1.0](https://huggingface.co/WizardLM/WizardCoder-3B-V1.0)
+- [TheBloke/WizardCoder-15B-1.0-GGML](https://huggingface.co/TheBloke/WizardCoder-15B-1.0-GGML)
+- [WizardLM/WizardCoder-Python-7B-V1.0](https://huggingface.co/WizardLM/WizardCoder-Python-7B-V1.0)
+- [TheBloke/WizardCoder-Python-7B-V1.0-GGUF](https://huggingface.co/TheBloke/WizardCoder-Python-7B-V1.0-GGUF)
+- [TheBloke/WizardCoder-Python-13B-V1.0-GGUF](https://huggingface.co/TheBloke/WizardCoder-Python-13B-V1.0-GGUF)
+- [TheBloke/WizardCoder-Python-34B-V1.0-GGUF](https://huggingface.co/TheBloke/WizardCoder-Python-34B-V1.0-GGUF)
+- [TheBloke/starchat-beta-GGML](https://huggingface.co/TheBloke/starchat-beta-GGML)
+
 
 Please check out their website to understand the hardware requirement.
 
-All models from HuggingFace will be downloaded first time you run it and stored in C:\Users\[YOUR_USER_NAME]\.cache
+All models from HuggingFace will be downloaded first time you run it and stored in C:\Users\[YOUR_USER_NAME]\.cache (they are big files)
 
 If you delete model in .cache (ex. save disk space), model will be re-download next time you start up the chatbot.
 
 
 # Environment Setup
-In order to set your environment up to run the code here, first install all requirements:
 
-I recommend using python 3.10 (best support for torch), but you may try 3.9 or 3.11
+## python version
+I recommend using python 3.10 (best support for torch especially for CUDA), but you may try 3.9 or 3.11
 
-```shell
-pip3 install torch torchvision torchaudio
-```
-If you wish to utilize CUDA (make sure you have cuda driver installed and have at least 8GB of VRAM or it will crash)
+## venv virtual environment
 
 ```shell
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+python -m venv .venv
 ```
+This will create a virtual environment in the .venv folder. If you use `VSCode`, it will automatically detect the virtual environment and use it for the project.
+
+## Install dependencies
 
 ```shell
 pip install -r requirements.txt
 ```
+This will install all the dependencies for the project in .venv folder.
+
+and that's it.
 
 # Environment Variable
 

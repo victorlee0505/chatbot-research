@@ -4,7 +4,11 @@ import sys
 import time
 from typing import Dict, Union, Any, List
 
-import ctransformers
+from ctransformers import (
+    AutoModelForCausalLM as cAutoModelForCausalLM,
+    AutoTokenizer as cAutoTokenizer,
+)
+
 import numpy as np
 import torch
 from langchain.llms import HuggingFacePipeline
@@ -32,6 +36,8 @@ from hf_llm_config import (
     LMSYS_VICUNA_1_5_16K_7B_Q8,
     LMSYS_VICUNA_1_5_13B_Q6,
     LMSYS_VICUNA_1_5_16K_13B_Q6,
+    OPENORCA_MISTRAL_8K_7B,
+    OPENORCA_MISTRAL_7B_Q5,
     STARCHAT_BETA_16B_Q5,
     WIZARDCODER_3B,
     WIZARDCODER_15B_Q8,
@@ -234,7 +240,7 @@ class HuggingFaceChatBotBase:
     def initialize_gguf_model(self):
         self.logger.info("Initializing Model ...")
 
-        model = ctransformers.AutoModelForCausalLM.from_pretrained(self.llm_config.model, 
+        model = cAutoModelForCausalLM.from_pretrained(self.llm_config.model, 
             model_file=self.llm_config.model_file, 
             model_type=self.llm_config.model_type,
             hf=True,
@@ -249,7 +255,7 @@ class HuggingFaceChatBotBase:
             stream=True,
             gpu_layers=self.gpu_layers
             )
-        self.tokenizer = ctransformers.AutoTokenizer.from_pretrained(model)
+        self.tokenizer = cAutoTokenizer.from_pretrained(model)
 
         if self.server_mode:
             self.streamer = TextIteratorStreamer(self.tokenizer, timeout=None, skip_prompt=True, skip_special_tokens=True)
@@ -368,12 +374,15 @@ if __name__ == "__main__":
     # bot = HuggingFaceChatBotBase(llm_config=REDPAJAMA_7B, disable_mem=True)
     # bot = HuggingFaceChatBotBase(llm_config=VICUNA_7B, disable_mem=True)
 
+    # bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
+    # bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_7B_Q5, disable_mem=True)
+
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B)
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B)
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B)
 
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B, disable_mem=True)
-    bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B, disable_mem=True)
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B, disable_mem=True)
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B, disable_mem=True)
 
     # GGUF Quantantized LLM, use less RAM
@@ -381,9 +390,9 @@ if __name__ == "__main__":
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
 
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 18GB
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 18GB
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q6, disable_mem=True, gpu_layers=0) # mem = 18GB
 
-    # bot = HuggingFaceChatBotBase(llm_config=STARCHAT_BETA_16B_Q5, disable_mem=True, gpu_layers=10) # mem = 23GB
+    # bot = HuggingFaceChatBotBase(llm_config=STARCHAT_BETA_16B_Q5, disable_mem=True, gpu_layers=0) # mem = 23GB
 
     # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_3B, disable_mem=True, gpu_layers=10)
     # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_15B_Q8, disable_mem=True, gpu_layers=10) # mem = 23GB
