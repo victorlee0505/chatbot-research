@@ -143,12 +143,12 @@ class HuggingFaceChatBotBase:
         self.logger.info("Initializing ChatBot ...")
         if self.llm_config.model_type is None:
             torch.set_num_threads(os.cpu_count())
-            if not self.gpu:
+            if self.gpu:
+                self.device = torch.device(f"cuda:{torch.cuda.current_device()}" if torch.cuda.is_available() else "cpu")
+            else:
                 self.logger.info("Disable CUDA")
                 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
                 self.device=torch.device('cpu')
-            else:
-                self.device = torch.device(f"cuda:{torch.cuda.current_device()}" if torch.cuda.is_available() else "cpu")
             self.initialize_model()
         else:
             self.initialize_gguf_model()
@@ -375,7 +375,7 @@ if __name__ == "__main__":
     # bot = HuggingFaceChatBotBase(llm_config=VICUNA_7B, disable_mem=True)
 
     # bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
-    # bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_7B_Q5, disable_mem=True)
+    # bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_7B_Q5, disable_mem=True, gpu=True, gpu_layers=10)
 
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B)
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B)
@@ -386,7 +386,7 @@ if __name__ == "__main__":
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B, disable_mem=True)
 
     # GGUF Quantantized LLM, use less RAM
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
+    bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
 
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 18GB
@@ -394,7 +394,7 @@ if __name__ == "__main__":
 
     # bot = HuggingFaceChatBotBase(llm_config=STARCHAT_BETA_16B_Q5, disable_mem=True, gpu_layers=0) # mem = 23GB
 
-    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_3B, disable_mem=True, gpu_layers=10)
+    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_3B, disable_mem=True)
     # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_15B_Q8, disable_mem=True, gpu_layers=10) # mem = 23GB
     # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_7B, disable_mem=True, gpu_layers=10)
     # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_7B_Q6, disable_mem=True, gpu_layers=10) # mem = 9GB

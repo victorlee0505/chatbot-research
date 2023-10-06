@@ -1,12 +1,9 @@
-torch --index-url https://download.pytorch.org/whl/cu118
-torchvision --index-url https://download.pytorch.org/whl/cu118
-torchaudio --index-url https://download.pytorch.org/whl/cu118
-
+flake8
 openai
 llama_index
 langchain
 ctransformers[cuda]
-transformers>=4.34.0
+transformers==4.33.3
 xformers
 wheel
 azure-search-documents --pre
@@ -23,3 +20,9 @@ azure-identity
 azure-search-documents
 einops
 ninja
+
+# PyTorch dependencies
+--extra-index-url https://download.pytorch.org/whl/cu118
+torch==2.0.1
+torchvision==0.15.2
+torchaudio==2.0.2
