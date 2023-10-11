@@ -36,7 +36,15 @@ from hf_llm_config import (
     LMSYS_VICUNA_1_5_16K_7B_Q8,
     LMSYS_VICUNA_1_5_13B_Q6,
     LMSYS_VICUNA_1_5_16K_13B_Q6,
+    OPENORCA_MISTRAL_8K_7B,
+    OPENORCA_MISTRAL_7B_Q5,
     STARCHAT_BETA_16B_Q5,
+    WIZARDCODER_3B,
+    WIZARDCODER_15B_Q8,
+    WIZARDCODER_PY_7B,
+    WIZARDCODER_PY_7B_Q6,
+    WIZARDCODER_PY_13B_Q6,
+    WIZARDCODER_PY_34B_Q5,
     WIZARDLM_FALCON_40B_Q6K, 
     LLMConfig
 )
@@ -371,7 +379,19 @@ class HuggingFaceChatBotChroma:
             human_prefix=self.llm_config.human_prefix,
         )
 
-        if not self.disable_mem:
+        if self.disable_mem:
+            print(f"disable_mem: {self.disable_mem}")
+            self.qa = RetrievalQA.from_llm(
+                llm=self.llm,
+                # chain_type="stuff",
+                retriever=retriever,
+                # memory=memory,
+                prompt=self.llm_config.prompt_qa_template,
+                # chain_type_kwargs={"prompt": self.llm_config.prompt_qa_template},
+                # get_chat_history=lambda h: h,
+                return_source_documents=self.show_source,
+            )
+        else:
             print(f"disable_mem: {self.disable_mem}")
             self.qa = ConversationalRetrievalChain.from_llm(
                 llm=self.llm,
@@ -380,19 +400,6 @@ class HuggingFaceChatBotChroma:
                 memory=memory,
                 condense_question_prompt=CONDENSE_QUESTION_PROMPT,
                 get_chat_history=lambda h: h,
-                return_source_documents=self.show_source,
-            )
-        else:
-            # still WIP, looks like it still answering outside of the context
-            print(f"disable_mem: {self.disable_mem}")
-            self.qa = RetrievalQA.from_llm(
-                llm=self.llm,
-                # chain_type="stuff",
-                retriever=retriever,
-                # memory=memory,
-                prompt=self.llm_config.prompt_qa_template,
-                # combine_docs_chain_kwargs={"prompt": QA_PROMPT_DOCUMENT_CHAT},
-                # get_chat_history=lambda h: h,
                 return_source_documents=self.show_source,
             )
 
@@ -440,12 +447,12 @@ class HuggingFaceChatBotChroma:
             print(f"<bot>: {answer}")
             return answer
         
-        if not self.disable_mem:
-            input_key = "question"
-            output_key = "answer"
-        else:
+        if self.disable_mem:
             input_key = "query"
             output_key = "result"
+        else:
+            input_key = "question"
+            output_key = "answer"
 
         response = self.qa({input_key: self.inputs})
         answer, docs = (
@@ -475,24 +482,39 @@ class HuggingFaceChatBotChroma:
 
 
 if __name__ == "__main__":
+    # get config
     # build a ChatBot object
     # bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_3B, disable_mem=True)
     # bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_7B, disable_mem=True)
     # bot = HuggingFaceChatBotChroma(llm_config=VICUNA_7B, disable_mem=True)
+
+    # bot = HuggingFaceChatBotChroma(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=False)
+    # bot = HuggingFaceChatBotChroma(llm_config=OPENORCA_MISTRAL_7B_Q5, disable_mem=True, gpu=True, gpu_layers=10)
+
+    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B)
+    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_7B)
+    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_LONGCHAT_1_5_32K_7B)
+
     # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B, disable_mem=True)
-    bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_7B, disable_mem=True)
+    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_7B, disable_mem=True)
     # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_LONGCHAT_1_5_32K_7B, disable_mem=True)
 
     # GGUF Quantantized LLM, use less RAM
     # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
     # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
 
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_13B_Q8, disable_mem=True, gpu_layers=10) # mem = 18GB
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q8, disable_mem=True, gpu_layers=0) # mem = 18GB
+    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 18GB
+    bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q6, disable_mem=True, gpu_layers=0) # mem = 18GB
+
+    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDCODER_3B, disable_mem=True)
+    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDCODER_15B_Q8, disable_mem=True, gpu_layers=10) # mem = 23GB
+    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDCODER_PY_7B, disable_mem=True, gpu_layers=10)
+    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDCODER_PY_7B_Q6, disable_mem=True, gpu_layers=10) # mem = 9GB
+    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDCODER_PY_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 14GB
+    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDCODER_PY_34B_Q5, disable_mem=True, gpu_layers=10) # mem = 27GB
     
     # This one is not good at all
     # bot = HuggingFaceChatBotChroma(llm_config=WIZARDLM_FALCON_40B_Q6K, disable_mem=True, gpu_layers=10) # mem = 45GB
-
     
     # start chatting
     while True:

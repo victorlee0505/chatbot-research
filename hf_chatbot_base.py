@@ -386,11 +386,11 @@ if __name__ == "__main__":
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B, disable_mem=True)
 
     # GGUF Quantantized LLM, use less RAM
-    bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
+    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
 
     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 18GB
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q6, disable_mem=True, gpu_layers=0) # mem = 18GB
+    bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q6, disable_mem=True, gpu_layers=0) # mem = 18GB
 
     # bot = HuggingFaceChatBotBase(llm_config=STARCHAT_BETA_16B_Q5, disable_mem=True, gpu_layers=0) # mem = 23GB
 

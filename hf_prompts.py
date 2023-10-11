@@ -55,21 +55,24 @@ REDPAJAMA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["history", "input"],
 redpajama_no_mem_template = no_mem_template.replace("{placeholder}", redpajama_prompt)
 REDPAJAMA_NO_MEM_PROMPT_TEMPLATE = PromptTemplate(input_variables=["input"], template=redpajama_no_mem_template)
 redpajama_qa_template = qa_prompt_template.replace("{placeholder}", redpajama_prompt)
-REDPAJAMA_QA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["context", "input"], template=redpajama_qa_template)
+redpajama_qa_template = redpajama_qa_template.replace("{input}", "{question}")
+REDPAJAMA_QA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["context", "question"], template=redpajama_qa_template)
 
 vicuna_template = memory_template.replace("{placeholder}", vicuna_prompt)
 VICUNA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["history", "input"], template=vicuna_template)
 vicuna_no_mem_template = no_mem_template.replace("{placeholder}", vicuna_prompt)
 VICUNA_NO_MEM_PROMPT_TEMPLATE = PromptTemplate(input_variables=["input"], template=vicuna_no_mem_template)
 vicuna_qa_template = qa_prompt_template.replace("{placeholder}", vicuna_prompt)
-VICUNA_QA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["context", "input"], template=vicuna_qa_template)
+vicuna_qa_template = vicuna_qa_template.replace("{input}", "{question}")
+VICUNA_QA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["context", "question"], template=vicuna_qa_template)
 
 falcon_template = memory_template.replace("{placeholder}", falcon_prompt)
 FALCON_PROMPT_TEMPLATE = PromptTemplate(input_variables=["history", "input"], template=falcon_template)
 falcon_no_mem_template = no_mem_template.replace("{placeholder}", falcon_prompt)
 FALCON_NO_MEM_PROMPT_TEMPLATE = PromptTemplate(input_variables=["input"], template=falcon_no_mem_template)
 falcon_qa_template = qa_prompt_template.replace("{placeholder}", falcon_prompt)
-FALCON_QA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["context", "input"], template=falcon_qa_template)
+falcon_qa_template = falcon_qa_template.replace("{input}", "{question}")
+FALCON_QA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["context", "question"], template=falcon_qa_template)
 
 wizard_coder_prompt = """
 ### Instruction:\n{input}\n\n
@@ -98,7 +101,7 @@ The following is a friendly conversation between a human and an AI. The AI is ta
 <|im_end|>
 {placeholder}
 """
-qa_prompt_template = """
+mistral_qa_prompt_template = """
 <|im_start|>system
 Use ONLY the context provided to answer the question at the end.
 If the context is not relevant, DO NOT try to use your own knowledge and simply say you don't know. 
@@ -111,8 +114,9 @@ mistral_template = mistral_prompt_template.replace("{placeholder}", mistral_open
 MISTRAL_PROMPT_TEMPLATE = PromptTemplate(input_variables=["history", "input"], template=mistral_template)
 mistral_no_mem_template = mistral_no_mem_prompt_template.replace("{placeholder}", mistral_openorca_prompt)
 MISTRAL_NO_MEM_PROMPT_TEMPLATE = PromptTemplate(input_variables=["input"], template=mistral_no_mem_template)
-mistral_qa_template = qa_prompt_template.replace("{placeholder}", mistral_openorca_prompt)
-MISTRAL_QA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["context", "input"], template=mistral_qa_template)
+mistral_qa_template = mistral_qa_prompt_template.replace("{placeholder}", mistral_openorca_prompt)
+mistral_qa_template = mistral_qa_template.replace("{input}", "{question}")
+MISTRAL_QA_PROMPT_TEMPLATE = PromptTemplate(input_variables=["context", "question"], template=mistral_qa_template)
 
 starchat_prompt = "<|system|> Below is a conversation between a human user and a helpful AI coding assistant. <|end|>\n<|user|> {input} <|end|>\n<|assistant|>"
 starchat_template = memory_template.replace("{placeholder}", starchat_prompt)
