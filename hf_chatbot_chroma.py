@@ -8,13 +8,13 @@ import chromadb
 import ctransformers
 import numpy as np
 import torch
-from langchain.llms import HuggingFacePipeline
+from langchain.llms.huggingface_pipeline import HuggingFacePipeline
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import ConversationalRetrievalChain, RetrievalQA
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.memory import ConversationSummaryBufferMemory
-from langchain.vectorstores import Chroma
+from langchain.vectorstores.chroma import Chroma
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,

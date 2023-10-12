@@ -11,7 +11,7 @@ from ctransformers import (
 
 import numpy as np
 import torch
-from langchain.llms import HuggingFacePipeline
+from langchain.llms.huggingface_pipeline import HuggingFacePipeline
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import ConversationChain, LLMChain
 from langchain.memory import ConversationSummaryBufferMemory

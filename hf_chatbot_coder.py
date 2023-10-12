@@ -6,7 +6,7 @@ from typing import Dict, Union, Any, List
 
 import numpy as np
 import torch
-from langchain.llms import HuggingFacePipeline
+from langchain.llms.huggingface_pipeline import HuggingFacePipeline
 from langchain import HuggingFacePipeline
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import ConversationChain, LLMChain

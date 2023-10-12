@@ -12,7 +12,7 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.chains.conversational_retrieval.prompts import CONDENSE_QUESTION_PROMPT
 from langchain.chat_models import AzureChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.llms import AzureOpenAI
+from langchain.llms.openai import AzureOpenAI
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.vectorstores import Chroma
 

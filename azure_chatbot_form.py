@@ -10,7 +10,7 @@ from langchain.callbacks import get_openai_callback
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import LLMChain, create_tagging_chain, create_tagging_chain_pydantic
 from langchain.chat_models import AzureChatOpenAI
-from langchain.llms import AzureOpenAI
+from langchain.llms.openai import AzureOpenAI
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.prompts import ChatPromptTemplate
 

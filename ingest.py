@@ -28,7 +28,7 @@ from langchain.document_loaders import (
 )
 from langchain.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
+from langchain.vectorstores.chroma import Chroma
 from tqdm import tqdm
 
 import ingest_code_text_splitter
