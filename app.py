@@ -4,12 +4,12 @@ import streamlit as st
 import torch
 from streamlit_chat import message
 
-from azure_chatbot import AzureOpenAiChatBot
-from azure_chatbot_base import AzureOpenAiChatBotBase
-from hf_chatbot_base import HuggingFaceChatBotBase
-from hf_chatbot_chroma import HuggingFaceChatBotChroma
-from hf_chatbot_coder import HuggingFaceChatBotCoder
-from hf_llm_config import (
+from chatbot_research.openai.azure_chatbot import AzureOpenAiChatBot
+from chatbot_research.openai.azure_chatbot_base import AzureOpenAiChatBotBase
+from chatbot_research.huggingface.chatbots.hf_chatbot_base import HuggingFaceChatBotBase
+from chatbot_research.huggingface.chatbots.hf_chatbot_chroma import HuggingFaceChatBotChroma
+from chatbot_research.huggingface.chatbots.hf_chatbot_coder import HuggingFaceChatBotCoder
+from chatbot_research.huggingface.config.hf_llm_config import (
     CODEGEN25_7B,
     CODEGEN2_1B,
     CODEGEN2_4B,
@@ -35,11 +35,11 @@ from hf_llm_config import (
     WIZARDCODER_PY_34B_Q5,
     WIZARDLM_FALCON_40B_Q6K
 )
-from openai_chatbot import OpenAiChatBot
+from chatbot_research.openai.openai_chatbot import OpenAiChatBot
 from langchain.callbacks.base import BaseCallbackHandler
 from app_persist import load_widget_state, persist
 from app_ui_constants import CHAT_ONLY, CLOSED, OPEN, REDPAJAMA_CHAT_3B_CONSTANT, SANTA_CODER_1B_CONSTANT
-from hf_streaming_util import text_streamer
+from chatbot_research.huggingface.utils.hf_streaming_util import text_streamer
 
 st.set_page_config(
         page_title="ChatBot-research",
@@ -545,11 +545,12 @@ def page_hf():
 def page_hf_chroma():
 
     def callback_reset():
-        print("callback_reset")
+        print("callback_reset chroma")
         st.session_state["chat_start_chroma_hf"] = False
         st.session_state["chat_mode_chroma_hf"] = OPEN
         st.session_state["chat_model_chroma_hf"] = REDPAJAMA_CHAT_3B_CONSTANT
         st.session_state["chat_gpu_chroma_hf"] = False
+        st.session_state["chat_no_mem_chroma_hf"] = False
         del st.session_state["chat_bot_hf"]
         st.session_state["chat_bot_hf"] = None
         st.session_state["chat_chroma_hf"] = []
@@ -643,7 +644,7 @@ def page_hf_chroma():
             # try to load model
             if st.session_state["chat_bot_hf"] is None:
                 gpu_layers= 10 if st.session_state["chat_gpu_chroma_hf"] else 0
-                st.session_state["chat_bot_hf"] = HuggingFaceChatBotChroma(llm_config=llm_chroma_options.get(st.session_state["chat_model_chroma_hf"]), gpu_layers=gpu_layers, gpu= st.session_state["chat_gpu_chroma_hf"], server_mode=True, disable_mem=st.session_state["chat_no_mem_hf"])
+                st.session_state["chat_bot_hf"] = HuggingFaceChatBotChroma(llm_config=llm_chroma_options.get(st.session_state["chat_model_chroma_hf"]), gpu_layers=gpu_layers, gpu= st.session_state["chat_gpu_chroma_hf"], server_mode=True, disable_mem=st.session_state["chat_no_mem_chroma_hf"])
                 name = st.session_state["chat_model_chroma_hf"]
                 print(f"{name} Chatbot: {OPEN}")
             run()

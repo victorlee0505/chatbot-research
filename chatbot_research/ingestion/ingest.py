@@ -1,12 +1,16 @@
+from dotenv import load_dotenv
 import glob
+import logging
 import os
+import sys
 from multiprocessing import Pool
 from typing import List
+import chromadb
 
 import openai
 import pandas as pd
+import torch
 from chromadb.config import Settings
-from dotenv import load_dotenv
 from langchain.docstore.document import Document
 from langchain.document_loaders import (
     CSVLoader,
@@ -22,31 +26,35 @@ from langchain.document_loaders import (
     UnstructuredPowerPointLoader,
     UnstructuredWordDocumentLoader,
 )
-from langchain.embeddings import OpenAIEmbeddings
+from langchain.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
+from langchain.vectorstores.chroma import Chroma
 from tqdm import tqdm
 
-from azure_cognitive_search import AzureCognitiveSearch
+from chatbot_research.ingestion import ingest_code_text_splitter
+from chatbot_research.ingestion.ingest_constants import (
+    CHROMA_SETTINGS_AZURE,
+    CHROMA_SETTINGS_HF,
+    PERSIST_DIRECTORY_AZURE,
+    PERSIST_DIRECTORY_HF,
+)
+from chatbot_research.utils.git_repo_utils import EXTENSIONS, GitRepoUtils
 
-from ingest_constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
+load_dotenv()
 
-openai.api_type = "azure"
-openai.api_base = os.getenv(
-    "AZURE_OPENAI_BASE_URL"
-)  # your endpoint should look like the following https://YOUR_RESOURCE_NAME.openai.azure.com/
-openai.api_version = os.getenv("AZURE_OPENAI_API_VERSION")  # this may change in the future
-openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")
-model = "text-embedding-ada-002"
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
-vector_store_address = os.getenv("AZURE_OPENAI_SEARCH_ENDPOINT")
-vector_store_password = os.getenv("AZURE_OPENAI_SEARCH_ADMIN_KEY")
-
+# Load environment variables
+persist_directory_azure = PERSIST_DIRECTORY_AZURE
+persist_directory_hf = PERSIST_DIRECTORY_HF
+chroma_setting_azure = CHROMA_SETTINGS_AZURE
+chroma_setting_hf = CHROMA_SETTINGS_HF
 source_directory = "./source_documents"
 chunk_size = 1000
-chunk_overlap = 0
+chunk_overlap = 20
 
-
+# Custom document loaders
 class MyElmLoader(UnstructuredEmailLoader):
     """Wrapper to fallback to text/plain when default does not work"""
 
@@ -89,25 +97,34 @@ LOADER_MAPPING = {
 }
 
 
-class AzureCognitiveSearchIngestion:
+class Ingestion:
     # initialize
     def __init__(
         self,
-        index_name: str = None,
+        offline: bool = False,
+        openai: bool = False,
         source_path: str = None,
+        chroma_setting: Settings = None,
+        persist_directory: str = None,
+        gpu: bool = False,
     ):
         """
         Initialize Ingestion object
 
         Parameters:
+        - offline: embedding engine: offline= huggingface , online = azure. they are not cross compatible.
         - source_path: default is "./source_documents"
+        - chroma_setting: vector storage setting, online and offline has different setting (recommend keep it default)
+        - persist_directory: vector storage location, online and offline has different storage (recommend keep it default)
+        - gpu: enable CUDA if supported. no effect to online embedding
         """
-        self.index_name = index_name
+        self.offline = offline
+        self.openai = openai
         self.source_path = source_path
-        self.persist_directory = PERSIST_DIRECTORY_AZURE
-        self.chroma_setting = CHROMA_SETTINGS_AZURE
-        if self.index_name is None or len(self.index_name) == 0:
-            raise ValueError("index_name can not be null.")
+        self.chroma_setting = chroma_setting
+        self.persist_directory = persist_directory
+        self.gpu = gpu
+
         if self.source_path is None or len(self.source_path) == 0:
             self.source_path = source_directory
         self.main()
@@ -167,6 +184,50 @@ class AzureCognitiveSearchIngestion:
                     pbar.update()
         return results
 
+    def load_single_code(self, file_path: str) -> List[Document]:
+        # print(f'load_single_code: {file_path}')
+        ext = file_path.rsplit(".", 1)[-1]
+        if ext not in EXTENSIONS:
+            print(f"Skipping extension: '{ext}")
+            return []
+        try:
+            with open(file_path, encoding="utf-8") as f:
+                texts = ingest_code_text_splitter.codeTextSplitter(
+                    language=ingest_code_text_splitter.get_language(ext),
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    documents=f.read(),
+                )
+                f.close
+                return texts
+        except:
+            print(f"\nFile failed to load: '{file_path}', File Types: '{ext}'")
+            return []
+
+    def process_code(self) -> List[Document]:
+        """
+        Load Code and split in chunks
+        """
+        # Find all Git repositories within the provided repo_path and its subfolders
+        git_repo_utils = GitRepoUtils(source_path=self.source_path)
+        all_files = git_repo_utils.find_all_files()
+        print(f"Total files found: {len(all_files)}")
+
+        with Pool(processes=os.cpu_count()) as pool:
+            results = []
+            with tqdm(
+                total=len(all_files), desc="Loading new documents", ncols=80
+            ) as pbar:
+                for i, docs in enumerate(
+                    pool.imap_unordered(self.load_single_code, all_files)
+                ):
+                    results.extend(docs)
+                    pbar.update()
+        print(
+            f"Split into {len(results)} chunks of text (max. {chunk_size} char each)"
+        )
+        return results
+
     def process_documents(self, ignored_files: List[str] = []) -> List[Document]:
         """
         Load documents and split in chunks
@@ -177,11 +238,13 @@ class AzureCognitiveSearchIngestion:
             print("No new documents to load")
             return None
         print(f"Loaded {len(documents)} new documents from {self.source_path}")
+        # if self.offline:
+        #     chunk_size = 1000
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
         texts = text_splitter.split_documents(documents)
-        print(f"Split into {len(texts)} chunks of text (max. {chunk_size} tokens each)")
+        print(f"Split into {len(texts)} chunks of text (max. {chunk_size} char each)")
         return texts
 
     def does_vectorstore_exist(self, persist_directory: str) -> bool:
@@ -206,111 +269,119 @@ class AzureCognitiveSearchIngestion:
         return False
 
     def main(self):
+        print(f"Offline Embedding: {self.offline}")
+        torch.set_num_threads(os.cpu_count())
         # Create embeddings
-        embeddings = OpenAIEmbeddings(
-            model="text-embedding-ada-002",
-            deployment="text-embedding-ada-002",
-            openai_api_key=openai.api_key,
-            openai_api_base=openai.api_base,
-            openai_api_type=openai.api_type,
-            openai_api_version=openai.api_version,
-            chunk_size=1,
-        )
-
-        # Create Index (update if already exist)
-        azuredb = AzureCognitiveSearch(
-            azure_search_endpoint=vector_store_address,
-            azure_search_key=vector_store_password,
-            index_name=index_name,
-            embedding_function=embeddings.embed_query,
-            # search_type='semantic_hybrid', # need to config
-            semantic_configuration_name="my_semantic_config",
-            openai_api_key=openai.api_key,
-            openai_api_base=openai.api_base,
-            openai_api_type=openai.api_type,
-            openai_api_version=openai.api_version,
-        )
-
+        if self.offline:
+            if not self.gpu:
+                print("Disable CUDA")
+                os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+                torch.device('cpu')
+            embeddings = HuggingFaceEmbeddings()
+            self.chroma_setting = CHROMA_SETTINGS_HF if self.chroma_setting is None else self.chroma_setting
+            self.persist_directory = persist_directory_hf if self.persist_directory is None else self.persist_directory
+        else:
+            if not self.openai:
+                openai.api_type = "azure"
+                openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")
+                openai.api_base = os.getenv("AZURE_OPENAI_BASE_URL")
+                openai.api_version = os.getenv("AZURE_OPENAI_API_VERSION")
+                
+                embeddings = OpenAIEmbeddings(
+                    model="text-embedding-ada-002",
+                    deployment="text-embedding-ada-002",
+                    openai_api_key=openai.api_key,
+                    openai_api_base=openai.api_base,
+                    openai_api_type=openai.api_type,
+                    openai_api_version=openai.api_version,
+                    chunk_size=1,
+                )
+            else:
+                print("OpenAI Embedding")
+                openai.api_key = os.getenv("OPENAI_API_KEY")
+                embeddings = OpenAIEmbeddings(
+                    model="text-embedding-ada-002",
+                    openai_api_key=openai.api_key,
+                )
+            self.chroma_setting = CHROMA_SETTINGS_AZURE
+            self.persist_directory = persist_directory_azure
+        
+        client = chromadb.PersistentClient(settings=self.chroma_setting, path=self.persist_directory)
         if self.does_vectorstore_exist(self.persist_directory):
-            # Update and store locally vectorstore and Azure Cognitive Index
+            # Update and store locally vectorstore
             print(
                 f"Documents: Appending to existing vectorstore at {self.persist_directory}"
             )
             db = Chroma(
-                persist_directory=self.persist_directory,
+                client=client,
                 embedding_function=embeddings,
-                client_settings=self.chroma_setting,
             )
             collection = db.get()
             texts = self.process_documents(
                 [metadata["source"] for metadata in collection["metadatas"]]
             )
+            # texts.append(self.process_code())
             if texts:
                 print(f"Documents: Creating embeddings. May take some minutes...")
                 db.add_documents(texts)
-                azuredb.add_documents(documents=texts)
         else:
-            # Create and store locally vectorstore and Azure Cognitive Index
+            # Create and store locally vectorstore
             print("Documents: Creating new vectorstore")
             texts = self.process_documents()
+            # texts.append(self.process_code())
             if texts:
                 print(f"Documents: Creating embeddings. May take some minutes...")
                 db = Chroma.from_documents(
-                    texts,
-                    embeddings,
-                    persist_directory=self.persist_directory,
-                    client_settings=self.chroma_setting,
+                    client=client,
+                    documents=texts,
+                    embedding=embeddings,
                 )
-                azuredb.add_documents(documents=texts)
-        db.persist()
         db = None
         print(f"Documents: Ingestion complete!")
 
-        # if self.does_vectorstore_exist(self.persist_directory):
-        #     # Update and store locally vectorstore
-        #     print(
-        #         f"Code: Appending to existing vectorstore at {self.persist_directory}"
-        #     )
-        #     db = Chroma(
-        #         persist_directory=self.persist_directory,
-        #         embedding_function=embeddings,
-        #         client_settings=self.chroma_setting,
-        #     )
-        #     collection = db.get()
-        #     texts = self.process_code()
-        #     if texts:
-        #         print(f"Code: Creating embeddings. May take some minutes...")
-        #         db.add_documents(texts)
-        # else:
-        #     # Create and store locally vectorstore
-        #     print("Code: Creating new vectorstore")
-        #     texts = self.process_code()
-        #     if texts:
-        #         print(f"Code: Creating embeddings. May take some minutes...")
-        #         db = Chroma.from_documents(
-        #             texts,
-        #             embeddings,
-        #             persist_directory=self.persist_directory,
-        #             client_settings=self.chroma_setting,
-        #         )
-        # db.persist()
-        # db = None
-        # print(f"Code: Ingestion complete!")
+        if self.does_vectorstore_exist(self.persist_directory):
+            # Update and store locally vectorstore
+            print(
+                f"Code: Appending to existing vectorstore at {self.persist_directory}"
+            )
+            db = Chroma(
+                client=client,
+                embedding_function=embeddings,
+            )
+            collection = db.get()
+            texts = self.process_code()
+            if texts:
+                print(f"Code: Creating embeddings. May take some minutes...")
+                db.add_documents(texts)
+        else:
+            # Create and store locally vectorstore
+            print("Code: Creating new vectorstore")
+            texts = self.process_code()
+            if texts:
+                print(f"Code: Creating embeddings. May take some minutes...")
+                db = Chroma.from_documents(
+                    client=client,
+                    documents=texts,
+                    embedding=embeddings,
+                )
+        db = None
+        print(f"Code: Ingestion complete!")
 
 
 if __name__ == "__main__":
-    index_name: str = "langchain-eng-demo"
 
     # overiding default source path
-    base_path = "C:\\Users\\LeeVic\\workspace\\openai\\chatbot-research\\temp"
+    # base_path = "C:\\path\\to\\your\\data"
+    # base_path = "C:\\Users\\LeeVic\\workspace\\openai\\chatbot-research\\temp"
 
     # Offline
     # ingest = Ingestion(offline=True, source_path=base_path)
-    # ingest = Ingestion(offline=True, gpu=True, source_path=base_path)
+    ingest = Ingestion(offline=True, gpu=True)
 
     # Azure Open AI
     # ingest = Ingestion(offline=False)
+    # ingest = Ingestion(offline=False, source_path=base_path)
 
-    # Azure Open AI
-    # ingest = AzureCognitiveSearchIngestion(index_name=index_name)
-    ingest = AzureCognitiveSearchIngestion(index_name=index_name, source_path=base_path)
+    # OpenAI
+    # ingest = Ingestion(offline=False, openai=True)
+

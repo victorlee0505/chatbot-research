@@ -15,8 +15,8 @@ from entities import (
     TokenizeResponse,
     StreamRequest,
     )
-from hf_chatbot_base import HuggingFaceChatBotBase
-from hf_llm_config import (
+from chatbot_research.huggingface.chatbots.hf_chatbot_base import HuggingFaceChatBotBase
+from chatbot_research.huggingface.config.hf_llm_config import (
     LMSYS_LONGCHAT_1_5_32K_7B,
     LMSYS_VICUNA_1_5_7B,
     LMSYS_VICUNA_1_5_7B_Q8,

@@ -34,8 +34,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores.chroma import Chroma
 from tqdm import tqdm
 
-import ingest_code_text_splitter
-from ingest_constants import (
+from chatbot_research.ingestion import ingest_code_text_splitter
+from chatbot_research.ingestion.ingest_constants import (
     CHROMA_SETTINGS_AZURE,
     CHROMA_SETTINGS_HF,
     CHROMA_SETTINGS_PARENT_HF,
@@ -43,7 +43,7 @@ from ingest_constants import (
     PERSIST_DIRECTORY_HF,
     PERSIST_DIRECTORY_PARENT_HF,
 )
-from git_repo_utils import EXTENSIONS, GitRepoUtils
+from chatbot_research.utils.git_repo_utils import EXTENSIONS, GitRepoUtils
 
 load_dotenv()
 
@@ -326,10 +326,10 @@ if __name__ == "__main__":
 
     # overiding default source path
     # base_path = "C:\\path\\to\\your\\data"
-    base_path = "C:\\Users\\LeeVic\\workspace\\openai\\chatbot-research\\temp"
+    # base_path = "C:\\Users\\LeeVic\\workspace\\openai\\chatbot-research\\temp"
 
     # Offline
-    ingest = Ingestion(offline=True)
+    ingest = Ingestion(offline=True, gpu=True)
     # ingest = Ingestion(offline=True, source_path=base_path)
     # ingest = Ingestion(offline=True, gpu=True, source_path=base_path)
 

@@ -14,8 +14,8 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.vectorstores import Chroma
 
-from ingest_constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
-from ingest import Ingestion
+from chatbot_research.ingestion.ingest_constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
+from chatbot_research.ingestion.ingest import Ingestion
 
 load_dotenv()
 

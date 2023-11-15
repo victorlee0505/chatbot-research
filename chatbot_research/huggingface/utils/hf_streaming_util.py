@@ -1,7 +1,8 @@
 from threading import Lock, Thread
-from hf_chatbot_base import HuggingFaceChatBotBase
-from hf_chatbot_chroma import HuggingFaceChatBotChroma
-from hf_chatbot_coder import HuggingFaceChatBotCoder
+import time
+from chatbot_research.huggingface.chatbots.hf_chatbot_base import HuggingFaceChatBotBase
+from chatbot_research.huggingface.chatbots.hf_chatbot_chroma import HuggingFaceChatBotChroma
+from chatbot_research.huggingface.chatbots.hf_chatbot_coder import HuggingFaceChatBotCoder
 
 def text_streamer(prompt, bot : HuggingFaceChatBotBase | HuggingFaceChatBotChroma | HuggingFaceChatBotCoder):
     # Start the generation in a separate thread
@@ -9,6 +10,7 @@ def text_streamer(prompt, bot : HuggingFaceChatBotBase | HuggingFaceChatBotChrom
     thread.start()
 
     # Use a while loop to continuously yield the generated text
+    hard_stop = False
     while True:
         try:
             # This is a blocking call until there's a new chunk of text or a stop signal
@@ -17,7 +19,17 @@ def text_streamer(prompt, bot : HuggingFaceChatBotBase | HuggingFaceChatBotChrom
         except StopIteration:
             # If we receive a StopIteration, it means the stream has ended
             break
-        # await asyncio.sleep(0.5)
+
+        # except StopIteration:
+        #     # If we receive a StopIteration, it means the stream has ended
+        #     time.sleep(5)
+        #     if hard_stop:
+        #         print("Hard stop")
+        #         break
+        #     else:
+        #         hard_stop = True
+        #         print("Soft stop")
+        #         continue
 
 def run_generation(prompt, bot : HuggingFaceChatBotBase | HuggingFaceChatBotChroma | HuggingFaceChatBotCoder):
     # llama.pipe(prompt)[0]['generated_text']

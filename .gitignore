@@ -6,3 +6,6 @@ storage_azure/
 storage_hf/
 temp/
 tmp/
+staging/
+storage_hf_resume/
+resume_input/

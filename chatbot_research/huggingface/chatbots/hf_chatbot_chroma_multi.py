@@ -27,8 +27,8 @@ from transformers import (
     TextIteratorStreamer,
     pipeline,
 )
-from file_system import LocalFileStore
-from hf_llm_config import (
+from chatbot_research.ingestion.file_system import LocalFileStore
+from chatbot_research.huggingface.config.hf_llm_config import (
     REDPAJAMA_3B,
     REDPAJAMA_7B,
     VICUNA_7B,
@@ -51,13 +51,13 @@ from hf_llm_config import (
     WIZARDLM_FALCON_40B_Q6K, 
     LLMConfig
 )
-from hf_prompts import CONDENSE_QUESTION_PROMPT, QA_PROMPT_DOCUMENT_CHAT
-from ingest_constants import (
+from chatbot_research.huggingface.config.hf_prompts import CONDENSE_QUESTION_PROMPT, QA_PROMPT_DOCUMENT_CHAT
+from chatbot_research.ingestion.ingest_constants import (
     CHROMA_SETTINGS_HF,
     PERSIST_DIRECTORY_HF,
     PERSIST_DIRECTORY_PARENT_HF
     )
-from ingest_multi import Ingestion, CHUNK_SIZE
+from chatbot_research.ingestion.ingest_multi import Ingestion, CHUNK_SIZE
 
 persist_directory = PERSIST_DIRECTORY_HF
 
@@ -503,7 +503,7 @@ if __name__ == "__main__":
     # bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_7B, disable_mem=True)
     # bot = HuggingFaceChatBotChroma(llm_config=VICUNA_7B, disable_mem=True)
 
-    bot = HuggingFaceChatBotChroma(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=False)
+    bot = HuggingFaceChatBotChroma(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
     # bot = HuggingFaceChatBotChroma(llm_config=OPENORCA_MISTRAL_7B_Q5, disable_mem=True, gpu=True, gpu_layers=10)
 
     # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B)

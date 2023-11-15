@@ -24,7 +24,7 @@ from transformers import (
 )
 from langchain.prompts import PromptTemplate
 
-from hf_llm_config import CODEGEN25_7B, CODEGEN2_1B, CODEGEN2_4B, SANTA_CODER_1B, WIZARDCODER_3B, WIZARDCODER_15B_Q8, WIZARDCODER_PY_7B, LLMConfig
+from chatbot_research.huggingface.config.hf_llm_config import CODEGEN25_7B, CODEGEN2_1B, CODEGEN2_4B, SANTA_CODER_1B, WIZARDCODER_3B, WIZARDCODER_15B_Q8, WIZARDCODER_PY_7B, LLMConfig
 
 class MyCustomHandler(BaseCallbackHandler):
     def on_llm_start(

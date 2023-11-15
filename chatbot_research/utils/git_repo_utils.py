@@ -3,7 +3,7 @@ import os
 
 from git import InvalidGitRepositoryError, Repo
 
-from ingest_code_text_splitter import LanguageExtension
+from chatbot_research.ingestion.ingest_code_text_splitter import LanguageExtension
 
 # Provide the repo_path to start searching for Git repositories
 base_path = "./source_documents"

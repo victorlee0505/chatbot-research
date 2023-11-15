@@ -1,7 +1,7 @@
 from langchain.prompts import BasePromptTemplate, PromptTemplate
 from langchain.chains.conversation.prompt import PROMPT
 
-from hf_prompts import (
+from chatbot_research.huggingface.config.hf_prompts import (
     FALCON_NO_MEM_PROMPT_TEMPLATE,
     FALCON_PROMPT_TEMPLATE,
     FALCON_QA_PROMPT_TEMPLATE,
@@ -43,8 +43,8 @@ class LLMConfig:
         top_p: int = 0.7,
         top_k: int = 50,
         do_sample: bool = True,  # False: This generally results in more coherent but less diverse output
-        retriever_max_tokens_limit: int = 1000,
-        target_source_chunks: int = 4,
+        retriever_max_tokens_limit: int = 2000,
+        target_source_chunks: int = 20,
     ):
         self.model = model
         self.model_file = model_file

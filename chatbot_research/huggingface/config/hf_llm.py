@@ -25,30 +25,8 @@ from transformers import (
     TextIteratorStreamer,
     pipeline,
 )
-from hf_llm_config import (
-    REDPAJAMA_3B,
-    REDPAJAMA_7B,
-    VICUNA_7B,
-    LMSYS_VICUNA_1_5_7B,
-    LMSYS_VICUNA_1_5_16K_7B,
-    LMSYS_LONGCHAT_1_5_32K_7B,
-    LMSYS_VICUNA_1_5_7B_Q8,
-    LMSYS_VICUNA_1_5_16K_7B_Q8,
-    LMSYS_VICUNA_1_5_13B_Q6,
-    LMSYS_VICUNA_1_5_16K_13B_Q6,
-    OPENORCA_MISTRAL_8K_7B,
-    OPENORCA_MISTRAL_7B_Q5,
-    STARCHAT_BETA_16B_Q5,
-    WIZARDCODER_3B,
-    WIZARDCODER_15B_Q8,
-    WIZARDCODER_PY_7B,
-    WIZARDCODER_PY_7B_Q6,
-    WIZARDCODER_PY_13B_Q6,
-    WIZARDCODER_PY_34B_Q5,
-    WIZARDLM_FALCON_40B_Q6K, 
-    LLMConfig
-)
-from hf_prompts import NO_MEM_PROMPT
+from chatbot_research.huggingface.config.hf_llm_config import LLMConfig
+from chatbot_research.huggingface.config.hf_prompts import NO_MEM_PROMPT
 
 class MyCustomHandler(BaseCallbackHandler):
     def on_llm_start(
@@ -84,7 +62,7 @@ def timer_decorator(func):
 
 # A ChatBot class
 # Build a ChatBot class with all necessary modules to make a complete conversation
-class HuggingFaceChatBotBase:
+class HuggingFaceLLM:
     # initialize
     def __init__(
         self,
@@ -105,6 +83,8 @@ class HuggingFaceChatBotBase:
         self.server_mode = server_mode
         self.llm = None
         self.tokenizer = None
+        self.model = None
+        self.pipeline = None
         self.streamer = None
         self.qa = None
         self.chat_history = []
@@ -137,7 +117,7 @@ class HuggingFaceChatBotBase:
         # greet while starting
         self.welcome()
 
-    def welcome(self):
+    def welcome(self) -> HuggingFacePipeline:
         if self.llm_config:
             self.llm_config.validate()
         self.logger.info("Initializing ChatBot ...")
@@ -149,26 +129,11 @@ class HuggingFaceChatBotBase:
                 self.logger.info("Disable CUDA")
                 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
                 self.device=torch.device('cpu')
-            self.initialize_model()
+            return self.initialize_model()
         else:
-            self.initialize_gguf_model()
-        # some time to get user ready
-        time.sleep(2)
-        self.logger.info('Type "bye" or "quit" or "exit" to end chat \n')
-        # give time to read what has been printed
-        time.sleep(3)
-        # Greet and introduce
-        greeting = np.random.choice(
-            [
-                "Welcome, I am ChatBot, here for your kind service",
-                "Hey, Great day! I am your virtual assistant",
-                "Hello, it's my pleasure meeting you",
-                "Hi, I am a ChatBot. Let's chat!",
-            ]
-        )
-        print("<bot>: " + greeting)
+            return self.initialize_gguf_model()
 
-    def initialize_model(self):
+    def initialize_model(self) -> HuggingFacePipeline:
         self.logger.info("Initializing Model ...")
         try:
             generation_config = GenerationConfig.from_pretrained(self.llm_config.model)
@@ -180,11 +145,11 @@ class HuggingFaceChatBotBase:
         else:
             self.streamer = TextStreamer(self.tokenizer, skip_prompt=True)
         if self.gpu:
-            model = AutoModelForCausalLM.from_pretrained(self.llm_config.model)
-            model.half().cuda()
+            self.model = AutoModelForCausalLM.from_pretrained(self.llm_config.model)
+            self.model.half().cuda()
             torch_dtype = torch.float16
         else:
-            model = AutoModelForCausalLM.from_pretrained(self.llm_config.model)
+            self.model = AutoModelForCausalLM.from_pretrained(self.llm_config.model)
             torch_dtype = torch.bfloat16
 
         if self.gpu:
@@ -203,7 +168,7 @@ class HuggingFaceChatBotBase:
 
         pipe = pipeline(
             "text-generation",
-            model=model,
+            model=self.model,
             tokenizer=self.tokenizer,
             max_new_tokens=self.llm_config.max_new_tokens,
             temperature=self.llm_config.temperature,
@@ -221,23 +186,10 @@ class HuggingFaceChatBotBase:
         )
         handler = []
         handler = handler.append(MyCustomHandler()) if self.show_callback else handler
-        self.llm = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
+        self.pipeline = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
+        return self.pipeline
 
-        if self.disable_mem:
-            self.qa = LLMChain(llm=self.llm, prompt=self.llm_config.prompt_no_mem_template, verbose=False)
-        else:
-            memory = ConversationSummaryBufferMemory(
-                llm=self.llm,
-                max_token_limit=self.llm_config.max_mem_tokens,
-                output_key="response",
-                memory_key="history",
-                ai_prefix=self.llm_config.ai_prefix,
-                human_prefix=self.llm_config.human_prefix,
-            )
-
-            self.qa = ConversationChain(llm=self.llm, memory=memory, prompt=self.llm_config.prompt_template, verbose=False)
-
-    def initialize_gguf_model(self):
+    def initialize_gguf_model(self) -> HuggingFacePipeline:
         self.logger.info("Initializing Model ...")
 
         model = cAutoModelForCausalLM.from_pretrained(self.llm_config.model, 
@@ -282,135 +234,5 @@ class HuggingFaceChatBotBase:
         )
         handler = []
         handler = handler.append(MyCustomHandler()) if self.show_callback else handler
-        self.llm = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
-
-        if self.disable_mem:
-            self.qa = LLMChain(llm=self.llm, prompt=self.llm_config.prompt_no_mem_template, verbose=False)
-        else:
-            memory = ConversationSummaryBufferMemory(
-                llm=self.llm,
-                max_token_limit=self.llm_config.max_mem_tokens,
-                output_key="response",
-                memory_key="history",
-                ai_prefix=self.llm_config.ai_prefix,
-                human_prefix=self.llm_config.human_prefix,
-            )
-
-            self.qa = ConversationChain(llm=self.llm, memory=memory, prompt=self.llm_config.prompt_template, verbose=False)
-
-    def user_input(self, prompt: str = None):
-        # receive input from user
-        if prompt:
-            text = prompt
-        else:
-            text = input("<human>: ")
-
-        # end conversation if user wishes so
-        if text.lower().strip() in ["bye", "quit", "exit"] and not self.server_mode:
-            # turn flag on
-            self.end_chat = True
-            # a closing comment
-            print("<bot>: See you soon! Bye!")
-            time.sleep(1)
-            self.logger.info("\nQuitting ChatBot ...")
-            self.inputs = text
-        elif text.lower().strip() in ["reset"]:
-            self.logger.info("<bot>: reset conversation memory detected.")
-            memory = ConversationSummaryBufferMemory(
-                llm=self.llm,
-                max_token_limit=self.llm_config.max_mem_tokens,
-                output_key="response",
-                memory_key="history",
-                ai_prefix=self.llm_config.ai_prefix,
-                human_prefix=self.llm_config.human_prefix,
-            )
-            self.qa.memory = memory
-            self.inputs = text
-        else:
-            self.inputs = text
-
-    @timer_decorator
-    def bot_response(self) -> str:
-        if self.inputs.lower().strip() in ["bye", "quit", "exit"] and self.server_mode:
-            # a closing comment
-            answer = "<bot>: See you soon! Bye!"
-            print(f"<bot>: {answer}")
-            return answer
-        if self.inputs.lower().strip() in ["reset"]:
-            # a closing comment
-            answer = "<bot>: Conversation Memory cleared!"
-            print(f"<bot>: {answer}")
-            return answer
-        response = self.qa({"input": self.inputs})
-        if self.disable_mem:
-            output_key = "text"
-        else:
-            output_key = "response"
-        answer = (
-            response[output_key]
-        )
-        # in case, bot fails to answer
-        if answer == "":
-            answer = self.random_response()
-        else:
-            answer = answer.replace("\n<human>:", "") #chat
-            answer = answer.replace("\nHuman:", "") #instruct
-        # print bot response
-        self.chat_history.append((f"<human>: {self.inputs}", f"<bot>: {answer}"))
-        # logger.info(self.chat_history)
-        print(f"<bot>: {answer}")
-        return answer
-
-    # in case there is no response from model
-    def random_response(self):
-        return "I don't know", "I am not sure"
-
-
-if __name__ == "__main__":
-
-    # get config
-    # build a ChatBot object
-    # bot = HuggingFaceChatBotBase(llm_config=REDPAJAMA_3B, disable_mem=True)
-    # bot = HuggingFaceChatBotBase(llm_config=REDPAJAMA_7B, disable_mem=True)
-    # bot = HuggingFaceChatBotBase(llm_config=VICUNA_7B, disable_mem=True)
-
-    # bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
-    # bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_7B_Q5, disable_mem=True, gpu=True, gpu_layers=10)
-
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B)
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B)
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B)
-
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B, disable_mem=True)
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B, disable_mem=True)
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B, disable_mem=True)
-
-    # GGUF Quantantized LLM, use less RAM
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
-
-    # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 18GB
-    bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q6, disable_mem=True, gpu_layers=0) # mem = 18GB
-
-    # bot = HuggingFaceChatBotBase(llm_config=STARCHAT_BETA_16B_Q5, disable_mem=True, gpu_layers=0) # mem = 23GB
-
-    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_3B, disable_mem=True)
-    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_15B_Q8, disable_mem=True, gpu_layers=10) # mem = 23GB
-    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_7B, disable_mem=True, gpu_layers=10)
-    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_7B_Q6, disable_mem=True, gpu_layers=10) # mem = 9GB
-    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 14GB
-    # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_34B_Q5, disable_mem=True, gpu_layers=10) # mem = 27GB
-    
-    # This one is not good at all
-    # bot = HuggingFaceChatBotBase(llm_config=WIZARDLM_FALCON_40B_Q6K, disable_mem=True, gpu_layers=10) # mem = 45GB
-
-    # start chatting
-    while True:
-        # receive user input
-        bot.user_input()
-        # check whether to end chat
-        if bot.end_chat:
-            break
-        # output bot response
-        bot.bot_response()
-    # Happy Chatting!
+        self.pipeline = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
+        return self.pipeline

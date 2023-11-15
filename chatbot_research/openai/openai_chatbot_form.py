@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 import logging
 import json
 import os
@@ -9,49 +10,83 @@ import openai
 from langchain.callbacks import get_openai_callback
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import LLMChain, create_tagging_chain, create_tagging_chain_pydantic
-from langchain.chat_models import AzureChatOpenAI
-from langchain.llms.openai import AzureOpenAI
-from langchain.memory import ConversationSummaryBufferMemory
+from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
+from langchain.vectorstores import Chroma
+from chatbot_research.form_model.personal_details import PersonalDetails
 
-from PersonalDetails import PersonalDetails
+from chatbot_research.ingestion.ingest_constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
+from chatbot_research.ingestion.ingest import Ingestion
 
-logger = logging.getLogger(__name__)
-logger.propagate = False
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-handler = logging.StreamHandler(stream=sys.stdout)
-# handler.setLevel(logging.INFO)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+load_dotenv()
 
-openai.api_type = "azure"
-openai.api_base = os.getenv("AZURE_OPENAI_BASE_URL")  # your endpoint should look like the following https://YOUR_RESOURCE_NAME.openai.azure.com/
-openai.api_version = os.getenv("AZURE_OPENAI_API_VERSION")  # this may change in the future
-openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")
-deployment_name = os.getenv(
-    "OPENAI_DEPLOYMENT_NAME"
-)  # This will correspond to the custom name you chose for your deployment when you deployed a model.
+persist_directory = PERSIST_DIRECTORY_AZURE
+target_source_chunks = int(os.environ.get("TARGET_SOURCE_CHUNKS", 2))
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+model_name = "gpt-3.5-turbo"  # This will correspond to the custom name you chose for your deployment when you deployed a model.
 
 
 # A ChatBot class
 # Build a ChatBot class with all necessary modules to make a complete conversation
-class AzureOpenAiChatBotBase:
+class OpenAiChatBot:
     # initialize
     def __init__(
         self,
+        model: str = None,
+        source_path: str = None,
+        load_data: bool = False,
         show_stream: bool = False,
+        show_source: bool = False,
         gui_mode: bool = False,
+        log_to_file: bool = False,
         user_details: PersonalDetails = None
     ):
-        self.llm = None
+        """
+        Initialize AzureOpenAiChatBot object
+
+        Parameters:
+        - source_path: optional
+        - open_chat: set True to allow answer outside of the context
+        - load_data: set True if you want to load new / additional data. default skipping ingest data.
+        - show_stream: show_stream
+        - show_source: set True will show source of the completion
+        """
+        self.model = model
+        self.source_path = source_path
+        self.load_data = load_data
         self.show_stream = show_stream
+        self.show_source = show_source
         self.gui_mode = gui_mode
+        self.llm = None
+        self.embedding_llm = None
         self.qa = None
+        self.index = None
         self.chat_history = []
         self.inputs = None
         self.end_chat = False
         self.user_details = user_details
+        self.log_to_file = log_to_file
+
+        self.logger = logging.getLogger("chatbot-chroma")
+        self.logger.setLevel(logging.INFO)
+        self.logger.propagate = False
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.INFO)
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        ch.setFormatter(formatter)
+        self.logger.addHandler(ch)
+
+        if self.log_to_file:
+            log_dir = "logs"
+            os.makedirs(log_dir, exist_ok=True)  
+            log_filename = f"{log_dir}/{self.llm_config.model}.log"
+            fh = logging.FileHandler(log_filename)
+            fh.setLevel(logging.INFO)
+            self.logger.addHandler(fh)
+        # greet while starting
+        if self.model is None or len(self.model) == 0:
+            self.model = model_name
 
         if self.user_details is None:
             self.user_details = PersonalDetails(first_name="",
@@ -60,38 +95,39 @@ class AzureOpenAiChatBotBase:
                                 city="",
                                 email="",
                                 language="")
-
-        # greet while starting
         self.welcome()
 
     def welcome(self):
-        logger.info("Initializing ChatBot ...")
+        self.logger.info("Initializing ChatBot ...")
         self.initialize_model()
+
         # some time to get user ready
         time.sleep(2)
-        logger.info('Type "bye" or "quit" or "exit" to end chat \n')
+        self.logger.info('Type "bye" or "quit" or "exit" to end chat \n')
         # give time to read what has been printed
         time.sleep(3)
         # Greet and introduce
         greeting = np.random.choice(
             [
-                "Welcome, I am ChatBot to help you fill in a form.",
-                "Hey, Great day! I am your virtual assistant to help you fill in a form.",
+                "Welcome, I am ChatBot, here for your kind service",
+                "Hey, Great day! I am your virtual assistant",
+                "Hello, it's my pleasure meeting you",
+                "Hi, I am a ChatBot. Let's chat!",
             ]
         )
         print("<bot>: " + greeting)
 
     def initialize_model(self):
-        logger.info("Initializing Model ...")
+        self.logger.info("Initializing Model ...")
+
         callbacks = [StreamingStdOutCallbackHandler()] if self.show_stream else []
-        self.llm = AzureOpenAI(
-            deployment_name=deployment_name,
+
+        self.llm = ChatOpenAI(
+            model_name=self.model,
             temperature=0,
             callbacks=callbacks,
-            openai_api_type=openai.api_type,
-            openai_api_base=openai.api_base,
-            openai_api_version=openai.api_version,
             openai_api_key=openai.api_key,
+            max_tokens=2000,
         )
 
         PROMPT = ChatPromptTemplate.from_template(
@@ -99,6 +135,7 @@ class AzureOpenAiChatBotBase:
             don't ask as a list! Don't greet the user! Don't say Hi.Explain you need to get some info. If the ask_for list is empty then thank them and ask how you can help them \n\n \
             ### ask_for list: {ask_for}"
         )
+
         self.qa = LLMChain(llm=self.llm, prompt=PROMPT, verbose=False)
 
     def count_tokens(self, chain, query):
@@ -106,6 +143,9 @@ class AzureOpenAiChatBotBase:
             result = chain.run(query)
             print(f"Spent a total of {cb.total_tokens} tokens")
         return result
+    
+    def promptWrapper(self, text: str):
+        return "<human>: " + text + "\n<bot>: "
     
     def check_what_is_empty(self, user_peronal_details):
         ask_for = []
@@ -134,10 +174,14 @@ class AzureOpenAiChatBotBase:
         return ai_chat
     
     def generate_form(self):
-        file_path = '/output/user_details_Form.json'
-        with open(file_path, 'w') as f:
-                json.dump(self.user_details, f)
+        dir_path = 'tmp'
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
 
+        # Specify the file path
+        file_path = os.path.join(dir_path, 'user_details_Form.json')
+        with open(file_path, 'w') as f:
+                json.dump(self.user_details.dict(), f)
 
     def user_input(self, prompt: str = None):
         # receive input from user
@@ -146,15 +190,15 @@ class AzureOpenAiChatBotBase:
         else:
             text = input("<human>: ")
 
-        logger.debug(text)
+        self.logger.debug(text)
         # end conversation if user wishes so
         if text.lower().strip() in ["bye", "quit", "exit"] and not self.gui_mode:
             # turn flag on
             self.end_chat = True
             # a closing comment
-            logger.info("<bot>: See you soon! Bye!")
+            self.logger.info("<bot>: See you soon! Bye!")
             time.sleep(1)
-            logger.info("\nQuitting ChatBot ...")
+            self.logger.info("\nQuitting ChatBot ...")
             self.inputs = text
         else:
             self.inputs = text
@@ -191,7 +235,7 @@ class AzureOpenAiChatBotBase:
 
 if __name__ == "__main__":
     # build a ChatBot object
-    bot = AzureOpenAiChatBotBase()
+    bot = OpenAiChatBot()
     first_prompt = bot.ask_for_info()
     print(f"<bot>: {first_prompt}")
     # start chatting
