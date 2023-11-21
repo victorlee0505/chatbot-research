@@ -20,6 +20,7 @@ from chatbot_research.huggingface.config.hf_prompts import (
     VICUNA_PROMPT_TEMPLATE,
     VICUNA_QA_PROMPT_TEMPLATE,
     WIZARD_CODER_PROMPT_TEMPLATE,
+    FUNC_CALL_NO_MEM_PROMPT_TEMPLATE,
 )
 
 
@@ -413,4 +414,15 @@ STARCHAT_BETA_16B_Q5 = LLMConfig(
     top_p=0.95,
     stop_words=["<|end|>"],
     eos_token_id=["<|end|>"],
+)
+
+GLAIVEAI_FUNC_CALL_3B = LLMConfig(
+    model="glaiveai/glaive-function-calling-v1",
+    ai_prefix="SYSTEM: ",
+    human_prefix="USER: ",
+    prompt_template=FUNC_CALL_NO_MEM_PROMPT_TEMPLATE,
+    model_max_length=8192,
+    max_new_tokens=2048,
+    max_mem_tokens=600,
+    stop_words=["<|im_end|>"],
 )

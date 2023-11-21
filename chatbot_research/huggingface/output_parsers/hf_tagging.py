@@ -1,8 +1,9 @@
+import json
 from typing import Any, Optional
 
 from langchain.chains.base import Chain
 from langchain.chains.llm import LLMChain
-from langchain.chains.openai_functions.utils import _convert_schema, get_llm_kwargs
+from langchain.chains.openai_functions.utils import _convert_schema
 from langchain.output_parsers.openai_functions import (
     JsonOutputFunctionsParser,
     PydanticOutputFunctionsParser,
@@ -47,7 +48,7 @@ def create_tagging_chain(
     function = _get_tagging_function(schema)
     prompt = prompt or ChatPromptTemplate.from_template(_TAGGING_TEMPLATE)
     output_parser = JsonOutputFunctionsParser()
-    llm_kwargs = get_llm_kwargs(function)
+    llm_kwargs = _get_llm_kwargs(function)
     chain = LLMChain(
         llm=llm,
         prompt=prompt,
@@ -86,10 +87,9 @@ def create_tagging_chain_pydantic(
     """
     openai_schema = pydantic_schema.schema()
     function = _get_tagging_function(openai_schema)
-    print(f'function: {function}')
     prompt = prompt or ChatPromptTemplate.from_template(_TAGGING_TEMPLATE)
     output_parser = PydanticOutputFunctionsParser(pydantic_schema=pydantic_schema)
-    llm_kwargs = get_llm_kwargs(function)
+    llm_kwargs = _get_llm_kwargs(function)
     print(f'llm_kwargs: {llm_kwargs}')
     chain = LLMChain(
         llm=llm,
@@ -99,3 +99,22 @@ def create_tagging_chain_pydantic(
         **kwargs,
     )
     return chain
+
+def _get_llm_kwargs(function: dict) -> dict:
+    """Returns the kwargs for the LLMChain constructor.
+
+    Args:
+        function: The function to use.
+
+    Returns:
+        The kwargs for the LLMChain constructor.
+    """
+    _llm_kwargs = {"functions": [function], "function_call": {"name": function["name"]}}
+    if 'arguments' not in _llm_kwargs['function_call']:
+        _parameter_names = _llm_kwargs['functions'][0]['parameters']['properties'].keys()
+        _arguments = {param: "" for param in _parameter_names}
+        _llm_kwargs['function_call']['arguments'] = json.dumps(
+            _arguments,
+            indent=2
+        )
+    return _llm_kwargs

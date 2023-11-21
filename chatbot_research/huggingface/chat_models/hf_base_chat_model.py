@@ -100,20 +100,10 @@ class ChatHuggingFace(BaseChatModel):
             # Also OpenAI returns None for tool invocations
             content = _dict.get("content") or ""
             if _dict.get("function_call"):
-                if _dict.get("function_call").get("arguments"):
-                    _dict["function_call"]["arguments"] = json.dumps(
-                        _dict["function_call"]["arguments"]
-                    )
-                else:
-                    if _dict.get("functions"):
-                        _arguments = {param: "" for param in _dict['functions'][0]['parameters']['properties'].keys()}
-                        print(_arguments)
-                        _dict["function_call"]["arguments"] = json.dumps(
-                            _arguments, indent=2
-                        )
-
+                _dict["function_call"]["arguments"] = json.dumps(
+                    _dict["function_call"]["arguments"]
+                )
                 additional_kwargs = {"function_call": dict(_dict["function_call"])}
-
             else:
                 additional_kwargs = {}
             return AIMessage(content=content, additional_kwargs=additional_kwargs)

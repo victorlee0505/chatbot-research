@@ -14,7 +14,8 @@ import numpy as np
 import torch
 from langchain.llms.huggingface_pipeline import HuggingFacePipeline
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.chains import ConversationChain, LLMChain, create_tagging_chain_pydantic, create_tagging_chain, create_extraction_chain, create_extraction_chain_pydantic
+from langchain.chains import LLMChain, create_extraction_chain, create_tagging_chain_pydantic
+# from chatbot_research.huggingface.output_parsers.hf_tagging import create_tagging_chain_pydantic
 from langchain.chat_models.base import BaseChatModel
 from langchain.memory import ConversationSummaryBufferMemory
 from transformers import (

@@ -164,3 +164,23 @@ Answer:"""
 QA_PROMPT_DOCUMENT_CHAT = PromptTemplate(
     template=prompt_template, input_variables=["context", "question"]
 )
+
+func_call_template = """
+SYSTEM: You are an helpful assistant who has access to the following functions to help the user, you can use the functions if needed
+
+{placeholder}
+"""
+
+func_call_prompt = """
+USER: {input}
+"""
+
+func_call_no_mem_template = func_call_template.replace("{placeholder}", func_call_prompt)
+FUNC_CALL_NO_MEM_PROMPT_TEMPLATE = PromptTemplate(input_variables=["input"], template=func_call_no_mem_template)
+
+# # Llama style (with no system message)\
+system_prompt = ''
+B_INST, E_INST = "[INST]", "[/INST]"
+B_SYS, E_SYS = "", ""
+
+TRELIS_FUNC_CALL_PROMPT = f"{B_INST} {B_SYS}{system_prompt.strip()}{E_SYS}{input} {E_INST}\n\n"
