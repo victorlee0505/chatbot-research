@@ -156,7 +156,8 @@ class Ingestion:
                 try:
                     loader = loader_class(file_path, **loader_args)
                     return loader.load()
-                except:
+                except Exception as e:
+                    print(e)
                     print(f"\nFile failed to load: '{file_path}'")
                     return []
         raise ValueError(f"Unsupported file extension '{ext}'")

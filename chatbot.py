@@ -25,18 +25,21 @@ from chatbot_research.huggingface.config.hf_llm_config import (
     WIZARDLM_FALCON_40B_Q6K,
 )
 
+def main():
 
-bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
-# bot = HuggingFaceChatBotChroma(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
-# bot = HuggingFaceChatBotChromaPdr(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
+    bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
+    # bot = HuggingFaceChatBotChroma(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
+    # bot = HuggingFaceChatBotChromaPdr(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
+    # start chatting
+    while True:
+        # receive user input
+        bot.user_input()
+        # check whether to end chat
+        if bot.end_chat:
+            break
+        # output bot response
+        bot.bot_response()
+    # Happy Chatting!
 
-# start chatting
-while True:
-    # receive user input
-    bot.user_input()
-    # check whether to end chat
-    if bot.end_chat:
-        break
-    # output bot response
-    bot.bot_response()
-# Happy Chatting!
+if __name__ == "__main__":
+    main()

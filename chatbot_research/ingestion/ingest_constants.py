@@ -24,3 +24,5 @@ CHROMA_SETTINGS_PARENT_HF = Settings(
         persist_directory=PERSIST_DIRECTORY_PARENT_HF,
         anonymized_telemetry=False
 )
+
+ALL_MINILM_L6_V2 = 'sentence-transformers/all-MiniLM-L6-v2'

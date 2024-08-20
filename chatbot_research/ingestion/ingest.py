@@ -25,6 +25,7 @@ from langchain.document_loaders import (
     UnstructuredODTLoader,
     UnstructuredPowerPointLoader,
     UnstructuredWordDocumentLoader,
+    UnstructuredFileLoader,
 )
 from langchain.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -37,6 +38,7 @@ from chatbot_research.ingestion.ingest_constants import (
     CHROMA_SETTINGS_HF,
     PERSIST_DIRECTORY_AZURE,
     PERSIST_DIRECTORY_HF,
+    ALL_MINILM_L6_V2,
 )
 from chatbot_research.utils.git_repo_utils import EXTENSIONS, GitRepoUtils
 
@@ -93,6 +95,7 @@ LOADER_MAPPING = {
     ".ppt": (UnstructuredPowerPointLoader, {}),
     ".pptx": (UnstructuredPowerPointLoader, {}),
     ".txt": (TextLoader, {"encoding": "utf8"}),
+    ".log": (TextLoader, {"encoding": "unicode_escape"}),
     # Add more mappings for other file extensions and loaders as needed
 }
 
@@ -107,6 +110,7 @@ class Ingestion:
         chroma_setting: Settings = None,
         persist_directory: str = None,
         gpu: bool = False,
+        embedding_model: str = None,
     ):
         """
         Initialize Ingestion object
@@ -124,6 +128,8 @@ class Ingestion:
         self.chroma_setting = chroma_setting
         self.persist_directory = persist_directory
         self.gpu = gpu
+        self.embedding_model = embedding_model
+        self.failed_files = []
 
         if self.source_path is None or len(self.source_path) == 0:
             self.source_path = source_directory
@@ -136,6 +142,7 @@ class Ingestion:
             loader_class, loader_args = LOADER_MAPPING[ext]
             if ext == ".csv":
                 try:
+                    print(f"Loading csv: '{file_path}'")
                     loader = loader_class(file_path, **loader_args)
                     return loader.load()
                 except:
@@ -147,13 +154,17 @@ class Ingestion:
                 except:
                     pass
                 print(f"\ncsv failed to load: '{file_path}'")
+                self.failed_files.append(file_path)
                 return []
             else:
                 try:
+                    print(f"Loading file: '{file_path}'")
                     loader = loader_class(file_path, **loader_args)
                     return loader.load()
-                except:
+                except Exception as e:
+                    print(e)
                     print(f"\nFile failed to load: '{file_path}'")
+                    self.failed_files.append(file_path)
                     return []
         raise ValueError(f"Unsupported file extension '{ext}'")
 
@@ -277,7 +288,10 @@ class Ingestion:
                 print("Disable CUDA")
                 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
                 torch.device('cpu')
-            embeddings = HuggingFaceEmbeddings()
+            if self.embedding_model is None:
+                embeddings = HuggingFaceEmbeddings()
+            else:
+                embeddings = HuggingFaceEmbeddings(model_name=self.embedding_model)
             self.chroma_setting = CHROMA_SETTINGS_HF if self.chroma_setting is None else self.chroma_setting
             self.persist_directory = persist_directory_hf if self.persist_directory is None else self.persist_directory
         else:
@@ -320,6 +334,7 @@ class Ingestion:
             texts = self.process_documents(
                 [metadata["source"] for metadata in collection["metadatas"]]
             )
+            print(f"Failed Documents: {self.failed_files}")
             # texts.append(self.process_code())
             if texts:
                 print(f"Documents: Creating embeddings. May take some minutes...")
@@ -328,6 +343,7 @@ class Ingestion:
             # Create and store locally vectorstore
             print("Documents: Creating new vectorstore")
             texts = self.process_documents()
+            print(f"Failed Documents: {self.failed_files}")
             # texts.append(self.process_code())
             if texts:
                 print(f"Documents: Creating embeddings. May take some minutes...")
@@ -377,6 +393,9 @@ if __name__ == "__main__":
     # Offline
     # ingest = Ingestion(offline=True, source_path=base_path)
     ingest = Ingestion(offline=True, gpu=True)
+
+    # sentence-transformers/all-MiniLM-L6-v2
+    # ingest = Ingestion(offline=True, gpu=True, embedding_model=ALL_MINILM_L6_V2)
 
     # Azure Open AI
     # ingest = Ingestion(offline=False)
