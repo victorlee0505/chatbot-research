@@ -1,7 +1,9 @@
 flake8
 openai
 llama_index
+langchain-core
 langchain
+langchain-community
 pydantic==1.10
 ctransformers[cuda]
 transformers==4.33.3
