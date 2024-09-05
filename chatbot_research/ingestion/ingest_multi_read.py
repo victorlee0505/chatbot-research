@@ -1,10 +1,10 @@
 from langchain.retrievers import ParentDocumentRetriever
-from langchain.vectorstores.chroma import Chroma
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores.chroma import Chroma
+from langchain_community.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.storage import InMemoryStore
-from langchain.document_loaders import TextLoader
+from langchain_community.document_loaders import TextLoader
 from chatbot_research.ingestion.file_system import LocalFileStore
 import chromadb
 from chatbot_research.ingestion.ingest_constants import CHROMA_SETTINGS_HF, PERSIST_DIRECTORY_HF, PERSIST_DIRECTORY_PARENT_HF

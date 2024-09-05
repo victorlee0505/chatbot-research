@@ -1,5 +1,5 @@
 import pandas as pd
-from langchain.document_loaders import DataFrameLoader
+from langchain_community.document_loaders import DataFrameLoader
 
 # Assuming you have a DataFrame named df
 # df = pd.read_csv('./data/excel/sunshine_difference.csv')

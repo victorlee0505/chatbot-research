@@ -12,7 +12,7 @@ import pandas as pd
 import torch
 from chromadb.config import Settings
 from langchain.docstore.document import Document
-from langchain.document_loaders import (
+from langchain_community.document_loaders import (
     CSVLoader,
     DataFrameLoader,
     EverNoteLoader,
@@ -27,9 +27,9 @@ from langchain.document_loaders import (
     UnstructuredWordDocumentLoader,
     UnstructuredFileLoader,
 )
-from langchain.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores.chroma import Chroma
+from langchain_community.vectorstores.chroma import Chroma
 from tqdm import tqdm
 
 from chatbot_research.ingestion import ingest_code_text_splitter

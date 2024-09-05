@@ -26,7 +26,7 @@ from typing import (
 import aiohttp
 import requests
 from langchain.callbacks.manager import AsyncCallbackManagerForLLMRun
-from langchain.llms.huggingface_pipeline import HuggingFacePipeline
+from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.chat_models.base import BaseChatModel
 from langchain.adapters.openai import convert_dict_to_message, convert_message_to_dict

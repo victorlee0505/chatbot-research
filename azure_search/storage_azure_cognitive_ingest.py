@@ -3,9 +3,9 @@ import os
 
 import openai
 from dotenv import load_dotenv
-from langchain.document_loaders import TextLoader
+from langchain_community.document_loaders import TextLoader
 import pandas as pd
-from langchain.document_loaders import DataFrameLoader
+from langchain_community.document_loaders import DataFrameLoader
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.schema import BaseRetriever
 from langchain.text_splitter import CharacterTextSplitter

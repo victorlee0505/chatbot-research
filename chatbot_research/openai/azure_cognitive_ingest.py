@@ -8,7 +8,7 @@ import pandas as pd
 from chromadb.config import Settings
 from dotenv import load_dotenv
 from langchain.docstore.document import Document
-from langchain.document_loaders import (
+from langchain_community.document_loaders import (
     CSVLoader,
     DataFrameLoader,
     EverNoteLoader,
@@ -22,9 +22,9 @@ from langchain.document_loaders import (
     UnstructuredPowerPointLoader,
     UnstructuredWordDocumentLoader,
 )
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_community.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
+from langchain_community.vectorstores.chroma import Chroma
 from tqdm import tqdm
 
 from azure_cognitive_search import AzureCognitiveSearch

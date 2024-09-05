@@ -1,7 +1,7 @@
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.vectorstores import FAISS
-from langchain.document_loaders import TextLoader
+from langchain_community.vectorstores.faiss import FAISS
+from langchain_community.document_loaders import TextLoader
 
 
 loader = TextLoader("./data/doc/paul_graham_essay.txt")
