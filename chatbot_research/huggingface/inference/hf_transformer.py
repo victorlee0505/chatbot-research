@@ -2,8 +2,9 @@ import logging
 import os
 
 import torch
-from langchain.chains import ConversationChain, LLMChain
-from langchain.llms.huggingface_pipeline import HuggingFacePipeline
+from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
+from langchain_core.chat_history import InMemoryChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -70,7 +71,7 @@ class HFTransformer(HFInferenceInterface):
             self.device = torch.device("cpu")
         return self.device
 
-    def initialize_model(self) -> LLMChain | ConversationChain:
+    def initialize_model(self):  # -> RunnableSerializable[Dict, str] | Any:
 
         self.initialize_torch_device()
 
@@ -135,18 +136,27 @@ class HFTransformer(HFInferenceInterface):
         self.llm_pipeline = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
 
         if self.disable_mem:
-            self.qa = LLMChain(
-                llm=self.llm_pipeline,
-                prompt=self.llm_config.prompt_no_mem_template,
-                verbose=False,
-            )
-        else:
-            memory = self.initializa_chat_memory()
+            self.qa = self.llm_config.prompt_no_mem_template | self.llm_pipeline
 
-            self.qa = ConversationChain(
-                llm=self.llm_pipeline,
-                memory=memory,
-                prompt=self.llm_config.prompt_template,
-                verbose=False,
+        else:
+            chat_history_for_chain = InMemoryChatMessageHistory()
+            chain = self.llm_config.prompt_template | self.llm_pipeline
+            self.qa = RunnableWithMessageHistory(
+                chain,
+                lambda session_id: chat_history_for_chain,
+                input_messages_key="input",
+                history_messages_key="history",
             )
+
+        return self.qa
+
+    def reset_chat_memory(self):
+        chat_history_for_chain = InMemoryChatMessageHistory()
+        chain = self.llm_config.prompt_template | self.llm_pipeline
+        self.qa = RunnableWithMessageHistory(
+            chain,
+            lambda session_id: chat_history_for_chain,
+            input_messages_key="input",
+            history_messages_key="history",
+        )
         return self.qa

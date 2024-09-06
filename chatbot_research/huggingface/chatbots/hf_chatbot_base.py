@@ -3,7 +3,6 @@ import os
 import time
 
 import numpy as np
-from langchain.chains import ConversationChain, LLMChain
 
 from chatbot_research.huggingface.config.hf_llm_config import (
     LMSYS_LONGCHAT_1_5_32K_7B,
@@ -115,7 +114,7 @@ class HuggingFaceChatBotBase:
                 disable_mem=self.disable_mem,
                 show_callback=self.show_callback,
             )
-            self.qa: LLMChain | ConversationChain = self.inference.initialize_model()
+            self.qa = self.inference.initialize_model()
         else:
             self.inference = HFllamaCpp(
                 logger=self.logger,
@@ -125,7 +124,7 @@ class HuggingFaceChatBotBase:
                 disable_mem=self.disable_mem,
                 show_callback=self.show_callback,
             )
-            self.qa: LLMChain | ConversationChain = self.inference.initialize_model()
+            self.qa = self.inference.initialize_model()
         # some time to get user ready
         time.sleep(2)
         self.logger.info('Type "bye" or "quit" or "exit" to end chat \n')
@@ -160,8 +159,7 @@ class HuggingFaceChatBotBase:
             self.inputs = text
         elif text.lower().strip() in ["reset"]:
             self.logger.info("<bot>: reset conversation memory detected.")
-            memory = self.inference.initializa_chat_memory()
-            self.qa.memory = memory
+            self.qa = self.inference.reset_chat_memory()
             self.inputs = text
         else:
             self.inputs = text
@@ -175,21 +173,29 @@ class HuggingFaceChatBotBase:
             return answer
         if self.inputs.lower().strip() in ["reset"]:
             # a closing comment
+            self.qa = self.inference.reset_chat_memory()
             answer = "<bot>: Conversation Memory cleared!"
             print(f"<bot>: {answer}")
             return answer
-        response = self.qa({"input": self.inputs})
-        if self.disable_mem:
-            output_key = "text"
-        else:
-            output_key = "response"
-        answer = response[output_key]
+        answer = ""
+        previous_length = 0
+        # Stream the response
+        for chunk in self.qa.stream(
+            {"input": self.inputs},
+            {"configurable": {"session_id": "unused"}},
+        ):
+            answer += chunk
+            if previous_length == 0:
+                print(f"<bot>: {chunk}", end="", flush=True)
+            else:
+                print(chunk, end="", flush=True)  # Print incrementally
+            previous_length = len(answer)
+
         # in case, bot fails to answer
-        if answer == "":
+        if answer.strip() == "":
             answer = self.random_response()
         else:
-            answer = answer.replace("\n<human>:", "")  # chat
-            answer = answer.replace("\nHuman:", "")  # instruct
+            answer = answer.replace("\n<human>:", "").replace("\nHuman:", "")
         # print bot response
         self.chat_history.append((f"<human>: {self.inputs}", f"<bot>: {answer}"))
         # logger.info(self.chat_history)

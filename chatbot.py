@@ -27,7 +27,8 @@ from chatbot_research.huggingface.config.hf_llm_config import (
 
 def main():
 
-    bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
+    bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=False)
+    # bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_7B_Q5, disable_mem=False)
     # bot = HuggingFaceChatBotChroma(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
     # bot = HuggingFaceChatBotChromaPdr(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
     # start chatting

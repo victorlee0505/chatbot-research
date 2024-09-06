@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 import torch
-from langchain.memory import ConversationSummaryBufferMemory
+from langchain.memory.summary_buffer import ConversationSummaryBufferMemory
 
 from chatbot_research.huggingface.config.hf_llm_config import LLMConfig
 
@@ -37,16 +37,6 @@ class HFInferenceInterface(ABC):
     def initialize_model(self) -> Any:
         raise NotImplementedError("You must implement the initialize_model method.")
 
-    def initializa_chat_memory(self) -> ConversationSummaryBufferMemory:
-        if self.llm_pipeline is None:
-            raise ValueError("You must initialize the model first.")
-        if self.llm_config is None:
-            raise ValueError("You must initialize the config first.")
-        return ConversationSummaryBufferMemory(
-            llm=self.llm_pipeline,
-            max_token_limit=self.llm_config.max_mem_tokens,
-            output_key="response",
-            memory_key="history",
-            ai_prefix=self.llm_config.ai_prefix,
-            human_prefix=self.llm_config.human_prefix,
-        )
+    @abstractmethod
+    def reset_chat_memory(self) -> ConversationSummaryBufferMemory:
+        raise NotImplementedError("You must implement the reset_chat_memory method.")
