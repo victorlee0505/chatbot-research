@@ -23,6 +23,11 @@ from chatbot_research.huggingface.inference.hf_interference_interface import (
 from chatbot_research.huggingface.inference.hf_stopping_criteria import (
     StoppingCriteriaSub,
 )
+from langchain_core.vectorstores import VectorStore
+from langchain.chains.retrieval import create_retrieval_chain
+from langchain.chains.history_aware_retriever import create_history_aware_retriever
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from chatbot_research.huggingface.config.hf_prompts import CONDENSE_QUESTION_PROMPT
 
 
 class HFTransformer(HFInferenceInterface):
@@ -71,11 +76,47 @@ class HFTransformer(HFInferenceInterface):
             self.device = torch.device("cpu")
         return self.device
 
-    def initialize_model(self):  # -> RunnableSerializable[Dict, str] | Any:
-
-        self.initialize_torch_device()
-
+    def initialize_chain(self):  # -> RunnableSerializable[Dict, str] | Any:
         self.logger.info("Initializing Model ...")
+        self.llm_pipeline = self.create_pipeline()
+
+        if self.disable_mem:
+            self.qa = self.llm_config.prompt_no_mem_template | self.llm_pipeline
+
+        else:
+            chat_history_for_chain = InMemoryChatMessageHistory()
+            chain = self.llm_config.prompt_template | self.llm_pipeline
+            self.qa = RunnableWithMessageHistory(
+                chain,
+                lambda session_id: chat_history_for_chain,
+                input_messages_key="input",
+                history_messages_key="history",
+            )
+        return self.qa
+    
+    def initialize_retrival_chain(self, vectorstore: VectorStore):  # -> RunnableSerializable[Dict, str] | Any:
+        self.logger.info("Initializing Model ...")
+        self.llm_pipeline = self.create_pipeline()
+
+        retriever = vectorstore.as_retriever(
+            search_type="similarity", search_kwargs={"k": self.llm_config.target_source_chunks}, max_tokens_limit=self.llm_config.retriever_max_tokens_limit
+        )
+
+        if self.disable_mem:
+            qa_chain = create_stuff_documents_chain(self.llm_pipeline, self.llm_config.prompt_qa_template)
+            self.qa = create_retrieval_chain(retriever, qa_chain)
+
+        else:
+            history_aware_retriever = create_history_aware_retriever(
+                self.llm_pipeline, retriever, CONDENSE_QUESTION_PROMPT
+            )
+            qa_chain = create_stuff_documents_chain(self.llm_pipeline, self.llm_config.prompt_qa_template)
+            self.qa = create_retrieval_chain(history_aware_retriever, qa_chain)
+        return self.qa
+    
+    def create_pipeline(self):
+        self.initialize_torch_device()
+        self.logger.info("Initializing LLM ...")
         try:
             generation_config = GenerationConfig.from_pretrained(self.llm_config.model)
         except Exception as e:
@@ -113,6 +154,8 @@ class HFTransformer(HFInferenceInterface):
             [StoppingCriteriaSub(stops=stop_words_ids)]
         )
 
+        self.logger.info("Creating Pipeline ...")
+
         pipe = pipeline(
             "text-generation",
             model=model,
@@ -133,22 +176,8 @@ class HFTransformer(HFInferenceInterface):
         )
         handler = []
         handler = handler.append(MyCustomHandler()) if self.show_callback else handler
-        self.llm_pipeline = HuggingFacePipeline(pipeline=pipe, callbacks=handler)
+        return HuggingFacePipeline(pipeline=pipe, callbacks=handler)
 
-        if self.disable_mem:
-            self.qa = self.llm_config.prompt_no_mem_template | self.llm_pipeline
-
-        else:
-            chat_history_for_chain = InMemoryChatMessageHistory()
-            chain = self.llm_config.prompt_template | self.llm_pipeline
-            self.qa = RunnableWithMessageHistory(
-                chain,
-                lambda session_id: chat_history_for_chain,
-                input_messages_key="input",
-                history_messages_key="history",
-            )
-
-        return self.qa
 
     def reset_chat_memory(self):
         chat_history_for_chain = InMemoryChatMessageHistory()

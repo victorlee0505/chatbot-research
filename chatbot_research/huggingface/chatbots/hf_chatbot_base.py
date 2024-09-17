@@ -114,7 +114,7 @@ class HuggingFaceChatBotBase:
                 disable_mem=self.disable_mem,
                 show_callback=self.show_callback,
             )
-            self.qa = self.inference.initialize_model()
+            self.qa = self.inference.initialize_chain()
         else:
             self.inference = HFllamaCpp(
                 logger=self.logger,
@@ -124,7 +124,7 @@ class HuggingFaceChatBotBase:
                 disable_mem=self.disable_mem,
                 show_callback=self.show_callback,
             )
-            self.qa = self.inference.initialize_model()
+            self.qa = self.inference.initialize_chain()
         # some time to get user ready
         time.sleep(2)
         self.logger.info('Type "bye" or "quit" or "exit" to end chat \n')
@@ -159,7 +159,6 @@ class HuggingFaceChatBotBase:
             self.inputs = text
         elif text.lower().strip() in ["reset"]:
             self.logger.info("<bot>: reset conversation memory detected.")
-            self.qa = self.inference.reset_chat_memory()
             self.inputs = text
         else:
             self.inputs = text
@@ -194,12 +193,13 @@ class HuggingFaceChatBotBase:
         # in case, bot fails to answer
         if answer.strip() == "":
             answer = self.random_response()
+            print(f"<bot>: {answer}")
         else:
             answer = answer.replace("\n<human>:", "").replace("\nHuman:", "")
         # print bot response
         self.chat_history.append((f"<human>: {self.inputs}", f"<bot>: {answer}"))
         # logger.info(self.chat_history)
-        print(f"<bot>: {answer}")
+        
         return answer
 
     # in case there is no response from model

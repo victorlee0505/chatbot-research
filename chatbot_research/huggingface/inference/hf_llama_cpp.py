@@ -2,12 +2,17 @@ import logging
 import os
 
 import torch
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains.history_aware_retriever import create_history_aware_retriever
+from langchain.chains.retrieval import create_retrieval_chain
 from langchain_community.llms.llamacpp import LlamaCpp
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.vectorstores import VectorStore
 from llama_cpp import Llama
 
 from chatbot_research.huggingface.config.hf_llm_config import LLMConfig
+from chatbot_research.huggingface.config.hf_prompts import CONDENSE_QUESTION_PROMPT
 from chatbot_research.huggingface.inference.hf_interference_interface import (
     HFInferenceInterface,
 )
@@ -51,29 +56,9 @@ class HFllamaCpp(HFInferenceInterface):
         torch.set_num_threads(os.cpu_count())
         return None
 
-    def initialize_model(self):  # -> RunnableSerializable[Dict, str] | Any:
+    def initialize_chain(self):  # -> RunnableSerializable[Dict, str] | Any:
         self.logger.info("Initializing Model ...")
-
-        self.llm: Llama = Llama.from_pretrained(
-            repo_id=self.llm_config.model,
-            filename=self.llm_config.model_file,
-            verbose=False,
-        )
-
-        self.llm_pipeline = LlamaCpp(
-            model_path=self.llm.model_path,
-            max_tokens=256,  # Adjust max tokens as needed
-            verbose=False,
-            temperature=self.llm_config.temperature,
-            top_p=self.llm_config.top_p,
-            top_k=self.llm_config.top_k,
-            repeat_penalty=1.2,
-            n_ctx=self.llm_config.model_max_length,
-            n_batch=self.llm_config.max_new_tokens,
-            stop=self.llm_config.stop_words,
-            n_threads=os.cpu_count(),
-            streaming=True,
-        )
+        self.llm_pipeline = self.create_pipeline()
 
         if self.disable_mem:
             self.qa = self.llm_config.prompt_no_mem_template | self.llm_pipeline
@@ -89,6 +74,53 @@ class HFllamaCpp(HFInferenceInterface):
             )
 
         return self.qa
+
+    def initialize_retrival_chain(self, vectorstore: VectorStore):
+        self.logger.info("Initializing Model ...")
+        self.llm_pipeline = self.create_pipeline()
+
+        retriever = vectorstore.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": self.llm_config.target_source_chunks},
+            max_tokens_limit=self.llm_config.retriever_max_tokens_limit,
+        )
+
+        if self.disable_mem:
+            qa_chain = create_stuff_documents_chain(self.llm_pipeline, self.llm_config.prompt_qa_template)
+            self.qa = create_retrieval_chain(retriever, qa_chain)
+        else:
+            history_aware_retriever = create_history_aware_retriever(
+                self.llm_pipeline, retriever, CONDENSE_QUESTION_PROMPT
+            )
+            qa_chain = create_stuff_documents_chain(
+                self.llm_pipeline, self.llm_config.prompt_qa_template
+            )
+            self.qa = create_retrieval_chain(history_aware_retriever, qa_chain)
+
+        return self.qa
+
+    def create_pipeline(self):
+        self.logger.info("Initializing LLM ...")
+        self.llm: Llama = Llama.from_pretrained(
+            repo_id=self.llm_config.model,
+            filename=self.llm_config.model_file,
+            verbose=False,
+        )
+
+        return LlamaCpp(
+            model_path=self.llm.model_path,
+            max_tokens=self.llm_config.max_new_tokens,  # Adjust max tokens as needed
+            verbose=False,
+            temperature=self.llm_config.temperature,
+            top_p=self.llm_config.top_p,
+            top_k=self.llm_config.top_k,
+            repeat_penalty=1.2,
+            n_ctx=self.llm_config.model_max_length,
+            n_batch=self.llm_config.max_new_tokens,
+            stop=self.llm_config.stop_words,
+            n_threads=os.cpu_count(),
+            streaming=True,
+        )
 
     def reset_chat_memory(self):
         chat_history_for_chain = InMemoryChatMessageHistory()

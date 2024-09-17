@@ -34,7 +34,11 @@ class HFInferenceInterface(ABC):
         )
 
     @abstractmethod
-    def initialize_model(self) -> Any:
+    def initialize_chain(self) -> Any:
+        raise NotImplementedError("You must implement the initialize_model method.")
+    
+    @abstractmethod
+    def initialize_retrival_chain(self) -> Any:
         raise NotImplementedError("You must implement the initialize_model method.")
 
     @abstractmethod

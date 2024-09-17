@@ -6,7 +6,7 @@ import time
 import numpy as np
 import openai
 from langchain.llms.openai import AzureOpenAI
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_community.embeddings import OpenAIEmbeddings
 from llama_index import LangchainEmbedding, SimpleDirectoryReader
 from llama_index import (
     GPTVectorStoreIndex,

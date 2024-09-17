@@ -4,9 +4,10 @@ llama_index
 langchain-core
 langchain
 langchain-community
-pydantic==1.10
-ctransformers[cuda]
-transformers==4.33.3
+llama-cpp-python
+huggingface-hub
+transformers
+pydantic
 xformers
 wheel
 azure-search-documents --pre
@@ -26,6 +27,6 @@ ninja
 
 # PyTorch dependencies
 --extra-index-url https://download.pytorch.org/whl/cu118
-torch==2.0.1
-torchvision==0.15.2
-torchaudio==2.0.2
+torch==2.4.1
+torchvision==0.19.1
+torchaudio==2.4.1
