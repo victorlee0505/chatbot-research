@@ -5,26 +5,8 @@ import time
 import numpy as np
 
 from chatbot_research.huggingface.config.hf_llm_config import (
-    LMSYS_LONGCHAT_1_5_32K_7B,
-    LMSYS_VICUNA_1_5_7B,
-    LMSYS_VICUNA_1_5_7B_Q8,
-    LMSYS_VICUNA_1_5_13B_Q6,
-    LMSYS_VICUNA_1_5_16K_7B,
-    LMSYS_VICUNA_1_5_16K_7B_Q8,
-    LMSYS_VICUNA_1_5_16K_13B_Q6,
     OPENORCA_MISTRAL_7B_Q5,
     OPENORCA_MISTRAL_8K_7B,
-    REDPAJAMA_3B,
-    REDPAJAMA_7B,
-    STARCHAT_BETA_16B_Q5,
-    VICUNA_7B,
-    WIZARDCODER_3B,
-    WIZARDCODER_15B_Q8,
-    WIZARDCODER_PY_7B,
-    WIZARDCODER_PY_7B_Q6,
-    WIZARDCODER_PY_13B_Q6,
-    WIZARDCODER_PY_34B_Q5,
-    WIZARDLM_FALCON_40B_Q6K,
     LLMConfig,
 )
 from chatbot_research.huggingface.inference.hf_llama_cpp import HFllamaCpp
@@ -199,7 +181,7 @@ class HuggingFaceChatBotBase:
         # print bot response
         self.chat_history.append((f"<human>: {self.inputs}", f"<bot>: {answer}"))
         # logger.info(self.chat_history)
-        
+
         return answer
 
     # in case there is no response from model

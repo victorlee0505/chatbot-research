@@ -115,7 +115,7 @@ MISTRAL_PROMPT_TEMPLATE = ChatPromptTemplate.from_template(template=mistral_temp
 mistral_no_mem_template = mistral_no_mem_prompt_template.replace("{placeholder}", mistral_openorca_prompt)
 MISTRAL_NO_MEM_PROMPT_TEMPLATE = ChatPromptTemplate.from_template(template=mistral_no_mem_template)
 mistral_qa_template = mistral_qa_prompt_template.replace("{placeholder}", mistral_openorca_prompt)
-mistral_qa_template = mistral_qa_template.replace("{input}", "{question}")
+# mistral_qa_template = mistral_qa_template.replace("{input}", "{question}")
 MISTRAL_QA_PROMPT_TEMPLATE = ChatPromptTemplate.from_template(template=mistral_qa_template)
 
 starchat_prompt = "<|system|> Below is a conversation between a human user and a helpful AI coding assistant. <|end|>\n<|user|> {input} <|end|>\n<|assistant|>"
@@ -141,8 +141,21 @@ Chat History:
 {chat_history}
 Follow Up Input: {question}
 Standalone question:"""
-CONDENSE_QUESTION_PROMPT = ChatPromptTemplate.from_template(
-    template=_template
+
+condense_question_system_template = (
+    "Given a chat history and the latest user question "
+    "which might reference context in the chat history, "
+    "formulate a standalone question which can be understood "
+    "without the chat history. Do NOT answer the question, "
+    "just reformulate it if needed and otherwise return it as is."
+)
+
+CONDENSE_QUESTION_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", condense_question_system_template),
+        ("placeholder", "{chat_history}"),
+        ("human", "{input}"),
+    ]
 )
 
 # prompt_template = """Use ONLY the context provided to answer the question at the end.

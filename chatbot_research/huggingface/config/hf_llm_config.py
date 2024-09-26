@@ -1,27 +1,31 @@
 from langchain.prompts import BasePromptTemplate, PromptTemplate
 from langchain.chains.conversation.prompt import PROMPT
 
-from chatbot_research.huggingface.config.hf_prompts import (
-    FALCON_NO_MEM_PROMPT_TEMPLATE,
-    FALCON_PROMPT_TEMPLATE,
-    FALCON_QA_PROMPT_TEMPLATE,
-    MISTRAL_PROMPT_TEMPLATE,
-    MISTRAL_NO_MEM_PROMPT_TEMPLATE,
-    MISTRAL_QA_PROMPT_TEMPLATE,
-    NO_MEM_PROMPT,
-    QA_PROMPT_DOCUMENT_CHAT,
-    REDPAJAMA_NO_MEM_PROMPT_TEMPLATE,
-    REDPAJAMA_PROMPT_TEMPLATE,
-    REDPAJAMA_QA_PROMPT_TEMPLATE,
-    STARCHAT_PROMPT_TEMPLATE,
-    STARCHAT_NO_MEM_PROMPT_TEMPLATE,
-    STRAIGHT_PROMPT,
-    VICUNA_NO_MEM_PROMPT_TEMPLATE,
-    VICUNA_PROMPT_TEMPLATE,
-    VICUNA_QA_PROMPT_TEMPLATE,
-    WIZARD_CODER_PROMPT_TEMPLATE,
-    FUNC_CALL_NO_MEM_PROMPT_TEMPLATE,
-)
+from chatbot_research.huggingface.config.hf_prompts import NO_MEM_PROMPT, QA_PROMPT_DOCUMENT_CHAT
+
+# from chatbot_research.huggingface.config.hf_prompts import (
+#     FALCON_NO_MEM_PROMPT_TEMPLATE,
+#     FALCON_PROMPT_TEMPLATE,
+#     FALCON_QA_PROMPT_TEMPLATE,
+#     MISTRAL_PROMPT_TEMPLATE,
+#     MISTRAL_NO_MEM_PROMPT_TEMPLATE,
+#     MISTRAL_QA_PROMPT_TEMPLATE,
+#     NO_MEM_PROMPT,
+#     QA_PROMPT_DOCUMENT_CHAT,
+#     REDPAJAMA_NO_MEM_PROMPT_TEMPLATE,
+#     REDPAJAMA_PROMPT_TEMPLATE,
+#     REDPAJAMA_QA_PROMPT_TEMPLATE,
+#     STARCHAT_PROMPT_TEMPLATE,
+#     STARCHAT_NO_MEM_PROMPT_TEMPLATE,
+#     STRAIGHT_PROMPT,
+#     VICUNA_NO_MEM_PROMPT_TEMPLATE,
+#     VICUNA_PROMPT_TEMPLATE,
+#     VICUNA_QA_PROMPT_TEMPLATE,
+#     WIZARD_CODER_PROMPT_TEMPLATE,
+#     FUNC_CALL_NO_MEM_PROMPT_TEMPLATE,
+# )
+
+from chatbot_research.huggingface.config.mistral_prompt import MistralOpenorcaPrompt
 
 
 class LLMConfig:
@@ -75,81 +79,13 @@ class LLMConfig:
         if not self.human_prefix:
             raise ValueError("human_prefix is not set.")
 
-
-REDPAJAMA_3B = LLMConfig(
-    model="togethercomputer/RedPajama-INCITE-Chat-3B-v1",
-    ai_prefix="<bot>:",
-    human_prefix="<human>:",
-    prompt_template=REDPAJAMA_PROMPT_TEMPLATE,
-    prompt_no_mem_template=REDPAJAMA_NO_MEM_PROMPT_TEMPLATE,
-    prompt_qa_template=REDPAJAMA_QA_PROMPT_TEMPLATE,
-    stop_words=["<human>:", "Question:"],
-)
-
-REDPAJAMA_7B = LLMConfig(
-    model="togethercomputer/RedPajama-INCITE-7B-Chat",
-    ai_prefix="<bot>:",
-    human_prefix="<human>:",
-    prompt_template=REDPAJAMA_PROMPT_TEMPLATE,
-    prompt_no_mem_template=REDPAJAMA_NO_MEM_PROMPT_TEMPLATE,
-    prompt_qa_template=REDPAJAMA_QA_PROMPT_TEMPLATE,
-    stop_words=["<human>:", "Question:"],
-)
-
-# LLAMA 1
-VICUNA_7B = LLMConfig(
-    model="TheBloke/Wizard-Vicuna-7B-Uncensored-HF",
-    ai_prefix="ASSISTANT:",
-    human_prefix="USER:",
-    prompt_template=VICUNA_PROMPT_TEMPLATE,
-    prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
-    prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
-)
-
-# LLAMA 2
-LMSYS_VICUNA_1_5_7B = LLMConfig(
-    model="lmsys/vicuna-7b-v1.5",
-    ai_prefix="ASSISTANT:",
-    human_prefix="USER:",
-    prompt_template=VICUNA_PROMPT_TEMPLATE,
-    prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
-    prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
-    model_max_length=4096,
-    max_new_tokens=2000,
-    max_mem_tokens=600,
-)
-
-LMSYS_VICUNA_1_5_16K_7B = LLMConfig(
-    model="lmsys/vicuna-7b-v1.5-16k",
-    ai_prefix="ASSISTANT:",
-    human_prefix="USER:",
-    prompt_template=VICUNA_PROMPT_TEMPLATE,
-    prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
-    prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
-    model_max_length=16000,
-    max_new_tokens=10000,
-    max_mem_tokens=2000,
-)
-
-LMSYS_LONGCHAT_1_5_32K_7B = LLMConfig(
-    model="lmsys/longchat-7b-v1.5-32k",
-    ai_prefix="ASSISTANT:",
-    human_prefix="USER:",
-    prompt_template=VICUNA_PROMPT_TEMPLATE,
-    prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
-    prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
-    model_max_length=32000,
-    max_new_tokens=22000,
-    max_mem_tokens=2000,
-)
-
 OPENORCA_MISTRAL_8K_7B = LLMConfig(
     model="Open-Orca/Mistral-7B-OpenOrca",
     ai_prefix="<|im_start|>assistant\n",
     human_prefix="<|im_start|>user\n",
-    prompt_template=MISTRAL_PROMPT_TEMPLATE,
-    prompt_no_mem_template=MISTRAL_NO_MEM_PROMPT_TEMPLATE,
-    prompt_qa_template=MISTRAL_QA_PROMPT_TEMPLATE,
+    prompt_template=MistralOpenorcaPrompt.MEMORY_PROMPT,
+    prompt_no_mem_template=MistralOpenorcaPrompt.NO_MEMORY_PROMPT,
+    prompt_qa_template=MistralOpenorcaPrompt.QA_PROMPT,
     model_max_length=8192,
     max_new_tokens=2048,
     max_mem_tokens=600,
@@ -162,267 +98,336 @@ OPENORCA_MISTRAL_7B_Q5 = LLMConfig(
     model_type="mistral",
     ai_prefix="<|im_start|>assistant\n",
     human_prefix="<|im_start|>user\n",
-    prompt_template=MISTRAL_PROMPT_TEMPLATE,
-    prompt_no_mem_template=MISTRAL_NO_MEM_PROMPT_TEMPLATE,
-    prompt_qa_template=MISTRAL_QA_PROMPT_TEMPLATE,
+    prompt_template=MistralOpenorcaPrompt.MEMORY_PROMPT,
+    prompt_no_mem_template=MistralOpenorcaPrompt.NO_MEMORY_PROMPT,
+    prompt_qa_template=MistralOpenorcaPrompt.QA_PROMPT,
     model_max_length=8192,
     max_new_tokens=2048,
     max_mem_tokens=600,
     stop_words=["<|im_end|>"],
 )
 
-# LLAMA 2 GGUF
+# REDPAJAMA_3B = LLMConfig(
+#     model="togethercomputer/RedPajama-INCITE-Chat-3B-v1",
+#     ai_prefix="<bot>:",
+#     human_prefix="<human>:",
+#     prompt_template=REDPAJAMA_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=REDPAJAMA_NO_MEM_PROMPT_TEMPLATE,
+#     prompt_qa_template=REDPAJAMA_QA_PROMPT_TEMPLATE,
+#     stop_words=["<human>:", "Question:"],
+# )
 
-LMSYS_VICUNA_1_5_7B_Q8 = LLMConfig(
-    model="TheBloke/vicuna-7B-v1.5-GGUF",
-    model_file="vicuna-7b-v1.5.Q8_0.gguf",
-    model_type="llama",
-    ai_prefix="ASSISTANT:",
-    human_prefix="USER:",
-    prompt_template=VICUNA_PROMPT_TEMPLATE,
-    prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
-    prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
-    model_max_length=4096,
-    max_new_tokens=2000,
-    max_mem_tokens=600,
-)
+# REDPAJAMA_7B = LLMConfig(
+#     model="togethercomputer/RedPajama-INCITE-7B-Chat",
+#     ai_prefix="<bot>:",
+#     human_prefix="<human>:",
+#     prompt_template=REDPAJAMA_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=REDPAJAMA_NO_MEM_PROMPT_TEMPLATE,
+#     prompt_qa_template=REDPAJAMA_QA_PROMPT_TEMPLATE,
+#     stop_words=["<human>:", "Question:"],
+# )
 
-LMSYS_VICUNA_1_5_16K_7B_Q8 = LLMConfig(
-    model="TheBloke/vicuna-7B-v1.5-16K-GGUF",
-    model_file="vicuna-7b-v1.5-16k.Q8_0.gguf",
-    model_type="llama",
-    ai_prefix="ASSISTANT:",
-    human_prefix="USER:",
-    prompt_template=VICUNA_PROMPT_TEMPLATE,
-    prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
-    prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
-    model_max_length=16000,
-    max_new_tokens=10000,
-    max_mem_tokens=2000,
-)
+# # LLAMA 1
+# VICUNA_7B = LLMConfig(
+#     model="TheBloke/Wizard-Vicuna-7B-Uncensored-HF",
+#     ai_prefix="ASSISTANT:",
+#     human_prefix="USER:",
+#     prompt_template=VICUNA_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
+#     prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
+# )
 
-LMSYS_VICUNA_1_5_13B_Q6 = LLMConfig(
-    model="TheBloke/vicuna-13B-v1.5-GGUF",
-    model_file="vicuna-13b-v1.5.Q6_K.gguf",
-    model_type="llama",
-    ai_prefix="ASSISTANT:",
-    human_prefix="USER:",
-    prompt_template=VICUNA_PROMPT_TEMPLATE,
-    prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
-    prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
-    model_max_length=4096,
-    max_new_tokens=2000,
-    max_mem_tokens=600,
-)
+# # LLAMA 2
+# LMSYS_VICUNA_1_5_7B = LLMConfig(
+#     model="lmsys/vicuna-7b-v1.5",
+#     ai_prefix="ASSISTANT:",
+#     human_prefix="USER:",
+#     prompt_template=VICUNA_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
+#     prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
+#     model_max_length=4096,
+#     max_new_tokens=2000,
+#     max_mem_tokens=600,
+# )
 
-LMSYS_VICUNA_1_5_16K_13B_Q6 = LLMConfig(
-    model="TheBloke/vicuna-13B-v1.5-16K-GGUF",
-    model_file="vicuna-13b-v1.5-16k.Q6_K.gguf",
-    model_type="llama",
-    ai_prefix="ASSISTANT:",
-    human_prefix="USER:",
-    prompt_template=VICUNA_PROMPT_TEMPLATE,
-    prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
-    prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
-    model_max_length=16000,
-    max_new_tokens=10000,
-    max_mem_tokens=2000,
-)
+# LMSYS_VICUNA_1_5_16K_7B = LLMConfig(
+#     model="lmsys/vicuna-7b-v1.5-16k",
+#     ai_prefix="ASSISTANT:",
+#     human_prefix="USER:",
+#     prompt_template=VICUNA_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
+#     prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
+#     model_max_length=16000,
+#     max_new_tokens=10000,
+#     max_mem_tokens=2000,
+# )
 
-WIZARDLM_FALCON_40B_Q6K = LLMConfig(
-    model="TheBloke/WizardLM-Uncensored-Falcon-40B-GGML",
-    model_file="wizardlm-uncensored-falcon-40b.ggccv1.q6_k.bin",
-    model_type="falcon",
-    ai_prefix="Assistant:",
-    human_prefix="User:",
-    prompt_template=FALCON_PROMPT_TEMPLATE,
-    prompt_no_mem_template=FALCON_NO_MEM_PROMPT_TEMPLATE,
-    prompt_qa_template=FALCON_QA_PROMPT_TEMPLATE,
-    model_max_length=4096,
-    max_new_tokens=2000,
-    max_mem_tokens=600,
-    eos_token_id=["<|endoftext|>"],
-)
+# LMSYS_LONGCHAT_1_5_32K_7B = LLMConfig(
+#     model="lmsys/longchat-7b-v1.5-32k",
+#     ai_prefix="ASSISTANT:",
+#     human_prefix="USER:",
+#     prompt_template=VICUNA_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
+#     prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
+#     model_max_length=32000,
+#     max_new_tokens=22000,
+#     max_mem_tokens=2000,
+# )
 
 
-SANTA_CODER_1B = LLMConfig(
-    model="bigcode/santacoder",
-    ai_prefix="<|assistant|>",
-    human_prefix="<|user|>",
-    prompt_template=STRAIGHT_PROMPT,
-    prompt_no_mem_template=STRAIGHT_PROMPT,
-    prompt_qa_template=STRAIGHT_PROMPT,
-    model_max_length=1024,
-    temperature=0.1,
-)
 
-CODEGEN2_1B = LLMConfig(
-    model="Salesforce/codegen2-1B",
-    ai_prefix="<|assistant|>",
-    human_prefix="<|user|>",
-    prompt_template=STRAIGHT_PROMPT,
-    prompt_no_mem_template=STRAIGHT_PROMPT,
-    prompt_qa_template=STRAIGHT_PROMPT,
-    temperature=0.1,
-)
+# # LLAMA 2 GGUF
 
-CODEGEN2_4B = LLMConfig(
-    model="Salesforce/codegen2-3_7B",
-    ai_prefix="<|assistant|>",
-    human_prefix="<|user|>",
-    prompt_template=STRAIGHT_PROMPT,
-    prompt_no_mem_template=STRAIGHT_PROMPT,
-    prompt_qa_template=STRAIGHT_PROMPT,
-    temperature=0.1,
-)
+# LMSYS_VICUNA_1_5_7B_Q8 = LLMConfig(
+#     model="TheBloke/vicuna-7B-v1.5-GGUF",
+#     model_file="vicuna-7b-v1.5.Q8_0.gguf",
+#     model_type="llama",
+#     ai_prefix="ASSISTANT:",
+#     human_prefix="USER:",
+#     prompt_template=VICUNA_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
+#     prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
+#     model_max_length=4096,
+#     max_new_tokens=2000,
+#     max_mem_tokens=600,
+# )
 
-CODEGEN25_7B = LLMConfig(
-    model="Salesforce/codegen25-7b-multi",
-    ai_prefix="<|assistant|>",
-    human_prefix="<|user|>",
-    prompt_template=STRAIGHT_PROMPT,
-    prompt_no_mem_template=STRAIGHT_PROMPT,
-    prompt_qa_template=STRAIGHT_PROMPT,
-    temperature=0.1,
-    max_new_tokens=128,
-)
+# LMSYS_VICUNA_1_5_16K_7B_Q8 = LLMConfig(
+#     model="TheBloke/vicuna-7B-v1.5-16K-GGUF",
+#     model_file="vicuna-7b-v1.5-16k.Q8_0.gguf",
+#     model_type="llama",
+#     ai_prefix="ASSISTANT:",
+#     human_prefix="USER:",
+#     prompt_template=VICUNA_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
+#     prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
+#     model_max_length=16000,
+#     max_new_tokens=10000,
+#     max_mem_tokens=2000,
+# )
 
-WIZARDCODER_3B = LLMConfig(
-    model="WizardLM/WizardCoder-3B-V1.0",
-    ai_prefix="Response:",
-    human_prefix="Instruction:",
-    prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    model_max_length=8192,
-    max_new_tokens=2048,
-    max_mem_tokens=600,
-    temperature=1,
-    do_sample=False,
-    top_p=1,
-    stop_words=["</s>"],
-    eos_token_id=["</s>"],
-)
+# LMSYS_VICUNA_1_5_13B_Q6 = LLMConfig(
+#     model="TheBloke/vicuna-13B-v1.5-GGUF",
+#     model_file="vicuna-13b-v1.5.Q6_K.gguf",
+#     model_type="llama",
+#     ai_prefix="ASSISTANT:",
+#     human_prefix="USER:",
+#     prompt_template=VICUNA_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
+#     prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
+#     model_max_length=4096,
+#     max_new_tokens=2000,
+#     max_mem_tokens=600,
+# )
 
-WIZARDCODER_15B_Q8 = LLMConfig(
-    model="TheBloke/WizardCoder-15B-1.0-GGML",
-    model_file="WizardCoder-15B-1.0.ggmlv3.q8_0.bin",
-    model_type="gpt_bigcode",
-    ai_prefix="Response:",
-    human_prefix="Instruction:",
-    prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    model_max_length=8192,
-    max_new_tokens=2048,
-    max_mem_tokens=600,
-    temperature=1,
-    do_sample=False,
-    top_p=1,
-    stop_words=["</s>"],
-    eos_token_id=["</s>"],
-)
+# LMSYS_VICUNA_1_5_16K_13B_Q6 = LLMConfig(
+#     model="TheBloke/vicuna-13B-v1.5-16K-GGUF",
+#     model_file="vicuna-13b-v1.5-16k.Q6_K.gguf",
+#     model_type="llama",
+#     ai_prefix="ASSISTANT:",
+#     human_prefix="USER:",
+#     prompt_template=VICUNA_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=VICUNA_NO_MEM_PROMPT_TEMPLATE,
+#     prompt_qa_template=VICUNA_QA_PROMPT_TEMPLATE,
+#     model_max_length=16000,
+#     max_new_tokens=10000,
+#     max_mem_tokens=2000,
+# )
 
-WIZARDCODER_PY_7B = LLMConfig(
-    model="WizardLM/WizardCoder-Python-7B-V1.0",
-    ai_prefix="Response:",
-    human_prefix="Instruction:",
-    prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    model_max_length=8192,
-    max_new_tokens=2048,
-    max_mem_tokens=600,
-    temperature=1,
-    do_sample=False,
-    top_p=1,
-    stop_words=["</s>"],
-    eos_token_id=["</s>"],
-)
+# WIZARDLM_FALCON_40B_Q6K = LLMConfig(
+#     model="TheBloke/WizardLM-Uncensored-Falcon-40B-GGML",
+#     model_file="wizardlm-uncensored-falcon-40b.ggccv1.q6_k.bin",
+#     model_type="falcon",
+#     ai_prefix="Assistant:",
+#     human_prefix="User:",
+#     prompt_template=FALCON_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=FALCON_NO_MEM_PROMPT_TEMPLATE,
+#     prompt_qa_template=FALCON_QA_PROMPT_TEMPLATE,
+#     model_max_length=4096,
+#     max_new_tokens=2000,
+#     max_mem_tokens=600,
+#     eos_token_id=["<|endoftext|>"],
+# )
 
-WIZARDCODER_PY_7B_Q6 = LLMConfig(
-    model="TheBloke/WizardCoder-Python-7B-V1.0-GGUF",
-    model_file="wizardcoder-python-7b-v1.0.Q6_K.gguf",
-    model_type="gpt_bigcode",
-    ai_prefix="Response:",
-    human_prefix="Instruction:",
-    prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    model_max_length=8192,
-    max_new_tokens=2048,
-    max_mem_tokens=600,
-    temperature=1,
-    do_sample=False,
-    top_p=1,
-    stop_words=["</s>"],
-    eos_token_id=["</s>"],
-)
 
-WIZARDCODER_PY_13B_Q6 = LLMConfig(
-    model="TheBloke/WizardCoder-Python-13B-V1.0-GGUF",
-    model_file="wizardcoder-python-13b-v1.0.Q6_K.gguf",
-    model_type="gpt_bigcode",
-    ai_prefix="Response:",
-    human_prefix="Instruction:",
-    prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    model_max_length=8192,
-    max_new_tokens=2048,
-    max_mem_tokens=600,
-    temperature=1,
-    do_sample=False,
-    top_p=1,
-    stop_words=["</s>"],
-    eos_token_id=["</s>"],
-)
+# SANTA_CODER_1B = LLMConfig(
+#     model="bigcode/santacoder",
+#     ai_prefix="<|assistant|>",
+#     human_prefix="<|user|>",
+#     prompt_template=STRAIGHT_PROMPT,
+#     prompt_no_mem_template=STRAIGHT_PROMPT,
+#     prompt_qa_template=STRAIGHT_PROMPT,
+#     model_max_length=1024,
+#     temperature=0.1,
+# )
 
-WIZARDCODER_PY_34B_Q5 = LLMConfig(
-    model="TheBloke/WizardCoder-Python-34B-V1.0-GGUF",
-    model_file="wizardcoder-python-34b-v1.0.Q5_K_M.gguf",
-    model_type="gpt_bigcode",
-    ai_prefix="Response:",
-    human_prefix="Instruction:",
-    prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
-    model_max_length=8192,
-    max_new_tokens=2048,
-    max_mem_tokens=600,
-    temperature=1,
-    do_sample=False,
-    top_p=1,
-    stop_words=["</s>"],
-    eos_token_id=["</s>"],
-)
+# CODEGEN2_1B = LLMConfig(
+#     model="Salesforce/codegen2-1B",
+#     ai_prefix="<|assistant|>",
+#     human_prefix="<|user|>",
+#     prompt_template=STRAIGHT_PROMPT,
+#     prompt_no_mem_template=STRAIGHT_PROMPT,
+#     prompt_qa_template=STRAIGHT_PROMPT,
+#     temperature=0.1,
+# )
 
-STARCHAT_BETA_16B_Q5 = LLMConfig(
-    model="TheBloke/starchat-beta-GGML",
-    model_file="starchat-beta.ggmlv3.q5_1.bin",
-    model_type="gpt_bigcode",
-    ai_prefix="<|assistant|>",
-    human_prefix="<|system|> Below is a conversation between a human user and a helpful AI coding assistant. <|end|>\n<|user|>",
-    prompt_template=STARCHAT_PROMPT_TEMPLATE,
-    prompt_no_mem_template=STARCHAT_NO_MEM_PROMPT_TEMPLATE,
-    model_max_length=8192,
-    max_new_tokens=2048,
-    max_mem_tokens=600,
-    temperature=0.2,
-    do_sample=True,
-    top_k=50,
-    top_p=0.95,
-    stop_words=["<|end|>"],
-    eos_token_id=["<|end|>"],
-)
+# CODEGEN2_4B = LLMConfig(
+#     model="Salesforce/codegen2-3_7B",
+#     ai_prefix="<|assistant|>",
+#     human_prefix="<|user|>",
+#     prompt_template=STRAIGHT_PROMPT,
+#     prompt_no_mem_template=STRAIGHT_PROMPT,
+#     prompt_qa_template=STRAIGHT_PROMPT,
+#     temperature=0.1,
+# )
 
-GLAIVEAI_FUNC_CALL_3B = LLMConfig(
-    model="glaiveai/glaive-function-calling-v1",
-    ai_prefix="SYSTEM: ",
-    human_prefix="USER: ",
-    prompt_template=FUNC_CALL_NO_MEM_PROMPT_TEMPLATE,
-    model_max_length=8192,
-    max_new_tokens=2048,
-    max_mem_tokens=600,
-    stop_words=["<|im_end|>"],
-)
+# CODEGEN25_7B = LLMConfig(
+#     model="Salesforce/codegen25-7b-multi",
+#     ai_prefix="<|assistant|>",
+#     human_prefix="<|user|>",
+#     prompt_template=STRAIGHT_PROMPT,
+#     prompt_no_mem_template=STRAIGHT_PROMPT,
+#     prompt_qa_template=STRAIGHT_PROMPT,
+#     temperature=0.1,
+#     max_new_tokens=128,
+# )
+
+# WIZARDCODER_3B = LLMConfig(
+#     model="WizardLM/WizardCoder-3B-V1.0",
+#     ai_prefix="Response:",
+#     human_prefix="Instruction:",
+#     prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     model_max_length=8192,
+#     max_new_tokens=2048,
+#     max_mem_tokens=600,
+#     temperature=1,
+#     do_sample=False,
+#     top_p=1,
+#     stop_words=["</s>"],
+#     eos_token_id=["</s>"],
+# )
+
+# WIZARDCODER_15B_Q8 = LLMConfig(
+#     model="TheBloke/WizardCoder-15B-1.0-GGML",
+#     model_file="WizardCoder-15B-1.0.ggmlv3.q8_0.bin",
+#     model_type="gpt_bigcode",
+#     ai_prefix="Response:",
+#     human_prefix="Instruction:",
+#     prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     model_max_length=8192,
+#     max_new_tokens=2048,
+#     max_mem_tokens=600,
+#     temperature=1,
+#     do_sample=False,
+#     top_p=1,
+#     stop_words=["</s>"],
+#     eos_token_id=["</s>"],
+# )
+
+# WIZARDCODER_PY_7B = LLMConfig(
+#     model="WizardLM/WizardCoder-Python-7B-V1.0",
+#     ai_prefix="Response:",
+#     human_prefix="Instruction:",
+#     prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     model_max_length=8192,
+#     max_new_tokens=2048,
+#     max_mem_tokens=600,
+#     temperature=1,
+#     do_sample=False,
+#     top_p=1,
+#     stop_words=["</s>"],
+#     eos_token_id=["</s>"],
+# )
+
+# WIZARDCODER_PY_7B_Q6 = LLMConfig(
+#     model="TheBloke/WizardCoder-Python-7B-V1.0-GGUF",
+#     model_file="wizardcoder-python-7b-v1.0.Q6_K.gguf",
+#     model_type="gpt_bigcode",
+#     ai_prefix="Response:",
+#     human_prefix="Instruction:",
+#     prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     model_max_length=8192,
+#     max_new_tokens=2048,
+#     max_mem_tokens=600,
+#     temperature=1,
+#     do_sample=False,
+#     top_p=1,
+#     stop_words=["</s>"],
+#     eos_token_id=["</s>"],
+# )
+
+# WIZARDCODER_PY_13B_Q6 = LLMConfig(
+#     model="TheBloke/WizardCoder-Python-13B-V1.0-GGUF",
+#     model_file="wizardcoder-python-13b-v1.0.Q6_K.gguf",
+#     model_type="gpt_bigcode",
+#     ai_prefix="Response:",
+#     human_prefix="Instruction:",
+#     prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     model_max_length=8192,
+#     max_new_tokens=2048,
+#     max_mem_tokens=600,
+#     temperature=1,
+#     do_sample=False,
+#     top_p=1,
+#     stop_words=["</s>"],
+#     eos_token_id=["</s>"],
+# )
+
+# WIZARDCODER_PY_34B_Q5 = LLMConfig(
+#     model="TheBloke/WizardCoder-Python-34B-V1.0-GGUF",
+#     model_file="wizardcoder-python-34b-v1.0.Q5_K_M.gguf",
+#     model_type="gpt_bigcode",
+#     ai_prefix="Response:",
+#     human_prefix="Instruction:",
+#     prompt_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     prompt_qa_template=WIZARD_CODER_PROMPT_TEMPLATE,
+#     model_max_length=8192,
+#     max_new_tokens=2048,
+#     max_mem_tokens=600,
+#     temperature=1,
+#     do_sample=False,
+#     top_p=1,
+#     stop_words=["</s>"],
+#     eos_token_id=["</s>"],
+# )
+
+# STARCHAT_BETA_16B_Q5 = LLMConfig(
+#     model="TheBloke/starchat-beta-GGML",
+#     model_file="starchat-beta.ggmlv3.q5_1.bin",
+#     model_type="gpt_bigcode",
+#     ai_prefix="<|assistant|>",
+#     human_prefix="<|system|> Below is a conversation between a human user and a helpful AI coding assistant. <|end|>\n<|user|>",
+#     prompt_template=STARCHAT_PROMPT_TEMPLATE,
+#     prompt_no_mem_template=STARCHAT_NO_MEM_PROMPT_TEMPLATE,
+#     model_max_length=8192,
+#     max_new_tokens=2048,
+#     max_mem_tokens=600,
+#     temperature=0.2,
+#     do_sample=True,
+#     top_k=50,
+#     top_p=0.95,
+#     stop_words=["<|end|>"],
+#     eos_token_id=["<|end|>"],
+# )
+
+# GLAIVEAI_FUNC_CALL_3B = LLMConfig(
+#     model="glaiveai/glaive-function-calling-v1",
+#     ai_prefix="SYSTEM: ",
+#     human_prefix="USER: ",
+#     prompt_template=FUNC_CALL_NO_MEM_PROMPT_TEMPLATE,
+#     model_max_length=8192,
+#     max_new_tokens=2048,
+#     max_mem_tokens=600,
+#     stop_words=["<|im_end|>"],
+# )
