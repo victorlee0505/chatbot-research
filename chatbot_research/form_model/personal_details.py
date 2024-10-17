@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+
 class PersonalDetails(BaseModel):
     first_name: str = Field(
         ...,
@@ -22,5 +23,6 @@ class PersonalDetails(BaseModel):
         description="an email address that the person associates as theirs",
     )
     language: str = Field(
-        ..., enum=["spanish", "english", "french", "german", "italian"]
+        ...,
+        description="The language that the person speaks",
     )

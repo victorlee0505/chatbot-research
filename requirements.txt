@@ -10,7 +10,6 @@ transformers
 pydantic
 xformers
 wheel
-azure-search-documents --pre
 lxml
 pypdf
 unstructured

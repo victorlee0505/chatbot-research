@@ -136,7 +136,7 @@
 #         self.qa = LLMChain(llm=self.chat, prompt=PROMPT, verbose=False)
 #         print("Welcome to the chatbot, please enter your details below.")
 
-#     def create_chat_model(self, llm):
+#     def create_chat_model(self, llm) -> ChatHuggingFace:
 #         """
 #         Create a chat model with the specified model name and temperature.
 
@@ -169,21 +169,6 @@
 #         non_empty_details = {k: v for k, v in new_details.dict().items() if v not in [None, ""]}
 #         updated_details = current_details.copy(update=non_empty_details)
 #         return updated_details
-    
-#     # def _get_tagging_function(self, schema: dict) -> dict:
-#     #     return {
-#     #         "name": "information_extraction",
-#     #         "description": "Extracts the relevant information from the passage.",
-#     #         "parameters": self._convert_schema(schema),
-#     #     }
-
-#     # def _convert_schema(self, schema: dict) -> dict:
-#     #     props = {k: {"title": k, **v} for k, v in schema["properties"].items()}
-#     #     return {
-#     #         "type": "object",
-#     #         "properties": props,
-#     #         "required": schema.get("required", []),
-#     #     }
 
 #     def filter_response(self, text_input, user_details: BaseModel):
 
@@ -246,93 +231,11 @@
 #                     break
 #     # Happy Chatting!
 
-#     # def user_input(self, prompt: str = None):
-#     #     # receive input from user
-#     #     if prompt:
-#     #         text = prompt
-#     #     else:
-#     #         text = input("<human>: ")
-
-#     #     # end conversation if user wishes so
-#     #     if text.lower().strip() in ["bye", "quit", "exit"] and not self.server_mode:
-#     #         # turn flag on
-#     #         self.end_chat = True
-#     #         # a closing comment
-#     #         print("<bot>: See you soon! Bye!")
-#     #         time.sleep(1)
-#     #         self.logger.info("\nQuitting ChatBot ...")
-#     #         self.inputs = text
-#     #     else:
-#     #         self.inputs = text
-
-#     # @timer_decorator
-#     # def bot_response(self) -> str:
-#     #     if self.inputs.lower().strip() in ["bye", "quit", "exit"] and self.server_mode:
-#     #         # a closing comment
-#     #         answer = "<bot>: See you soon! Bye!"
-#     #         print(f"<bot>: {answer}")
-#     #         return answer
-#     #     new_user_details, ask_for = self.filter_response(text_input=self.inputs, user_details=self.user_details)
-#     #     self.user_details = new_user_details
-#     #     if ask_for:
-#     #         answer = self.ask_for_info(ask_for)
-#     #     else:
-#     #         print('Everything gathered, generating form.\n')
-#     #         self.generate_form()
-#     #         self.end_chat = True
-#     #         answer = "Form generated, goodbye!"
-#     #     # in case, bot fails to answer
-#     #     if answer == "":
-#     #         answer = self.random_response()
-#     #     # print bot response
-#     #     self.chat_history.append((self.inputs, answer))
-#     #     # logger.debug(self.chat_history)
-#     #     print(f"<bot>: {answer}")
-#     #     self.count_tokens(self.qa, self.inputs)
-#     #     return answer
-
-#     # # in case there is no response from model
-#     # def random_response(self):
-#     #     return "I don't know", "I am not sure"
 
 
 # if __name__ == "__main__":
 
-#     # get config
-#     # build a ChatBot object
-#     # bot = HuggingFaceChatBotBase(llm_config=REDPAJAMA_3B, disable_mem=True)
-#     # bot = HuggingFaceChatBotBase(llm_config=REDPAJAMA_7B, disable_mem=True)
-#     # bot = HuggingFaceChatBotBase(llm_config=VICUNA_7B, disable_mem=True)
 
-#     # bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
-#     # bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_7B_Q5, disable_mem=True, gpu=False, gpu_layers=0)
-
-#     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B)
-#     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B)
-#     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B)
-
-#     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B, disable_mem=True)
-#     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B, disable_mem=True)
-#     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_LONGCHAT_1_5_32K_7B, disable_mem=True)
-
-#     # GGUF Quantantized LLM, use less RAM
-#     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
-#     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
-
-#     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 18GB
-#     # bot = HuggingFaceChatBotBase(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q6, disable_mem=True, gpu_layers=0) # mem = 18GB
-
-#     # bot = HuggingFaceChatBotBase(llm_config=STARCHAT_BETA_16B_Q5, disable_mem=True, gpu_layers=0) # mem = 23GB
-
-#     # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_3B, disable_mem=True)
-#     # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_15B_Q8, disable_mem=True, gpu_layers=10) # mem = 23GB
-#     # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_7B, disable_mem=True, gpu_layers=10)
-#     # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_7B_Q6, disable_mem=True, gpu_layers=10) # mem = 9GB
-#     # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 14GB
-#     # bot = HuggingFaceChatBotBase(llm_config=WIZARDCODER_PY_34B_Q5, disable_mem=True, gpu_layers=10) # mem = 27GB
-    
-#     # This one is not good at all
-#     # bot = HuggingFaceChatBotBase(llm_config=WIZARDLM_FALCON_40B_Q6K, disable_mem=True, gpu_layers=10) # mem = 45GB
 
 #     llm = HuggingFaceLLM(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
 

@@ -1,30 +1,10 @@
-from langchain.prompts import BasePromptTemplate, PromptTemplate
 from langchain.chains.conversation.prompt import PROMPT
+from langchain.prompts import BasePromptTemplate
 
-from chatbot_research.huggingface.config.hf_prompts import NO_MEM_PROMPT, QA_PROMPT_DOCUMENT_CHAT
-
-# from chatbot_research.huggingface.config.hf_prompts import (
-#     FALCON_NO_MEM_PROMPT_TEMPLATE,
-#     FALCON_PROMPT_TEMPLATE,
-#     FALCON_QA_PROMPT_TEMPLATE,
-#     MISTRAL_PROMPT_TEMPLATE,
-#     MISTRAL_NO_MEM_PROMPT_TEMPLATE,
-#     MISTRAL_QA_PROMPT_TEMPLATE,
-#     NO_MEM_PROMPT,
-#     QA_PROMPT_DOCUMENT_CHAT,
-#     REDPAJAMA_NO_MEM_PROMPT_TEMPLATE,
-#     REDPAJAMA_PROMPT_TEMPLATE,
-#     REDPAJAMA_QA_PROMPT_TEMPLATE,
-#     STARCHAT_PROMPT_TEMPLATE,
-#     STARCHAT_NO_MEM_PROMPT_TEMPLATE,
-#     STRAIGHT_PROMPT,
-#     VICUNA_NO_MEM_PROMPT_TEMPLATE,
-#     VICUNA_PROMPT_TEMPLATE,
-#     VICUNA_QA_PROMPT_TEMPLATE,
-#     WIZARD_CODER_PROMPT_TEMPLATE,
-#     FUNC_CALL_NO_MEM_PROMPT_TEMPLATE,
-# )
-
+from chatbot_research.huggingface.config.hf_prompts import (
+    NO_MEM_PROMPT,
+    QA_PROMPT_DOCUMENT_CHAT,
+)
 from chatbot_research.huggingface.config.mistral_prompt import MistralOpenorcaPrompt
 
 
@@ -79,6 +59,7 @@ class LLMConfig:
         if not self.human_prefix:
             raise ValueError("human_prefix is not set.")
 
+
 OPENORCA_MISTRAL_8K_7B = LLMConfig(
     model="Open-Orca/Mistral-7B-OpenOrca",
     ai_prefix="<|im_start|>assistant\n",
@@ -104,7 +85,22 @@ OPENORCA_MISTRAL_7B_Q5 = LLMConfig(
     model_max_length=8192,
     max_new_tokens=2048,
     max_mem_tokens=600,
-    stop_words=["<|im_end|>"],
+    stop_words=["<|im_end|>", "[/INST]"],
+)
+
+HERMES_2_PRO_LLAMA_3_8B_Q8 = LLMConfig(
+    model="NousResearch/Hermes-2-Pro-Llama-3-8B-GGUF",
+    model_file="Hermes-2-Pro-Llama-3-8B-Q8_0.gguf",
+    model_type="llama3",
+    ai_prefix="<|im_start|>assistant\n",
+    human_prefix="<|im_start|>user\n",
+    prompt_template=MistralOpenorcaPrompt.MEMORY_PROMPT,
+    prompt_no_mem_template=MistralOpenorcaPrompt.NO_MEMORY_PROMPT,
+    prompt_qa_template=MistralOpenorcaPrompt.QA_PROMPT,
+    model_max_length=8192,
+    max_new_tokens=2048,
+    max_mem_tokens=600,
+    stop_words=["<|im_end|>", "[/INST]"],
 )
 
 # REDPAJAMA_3B = LLMConfig(
@@ -173,7 +169,6 @@ OPENORCA_MISTRAL_7B_Q5 = LLMConfig(
 #     max_new_tokens=22000,
 #     max_mem_tokens=2000,
 # )
-
 
 
 # # LLAMA 2 GGUF
