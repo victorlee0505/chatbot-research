@@ -1,6 +1,4 @@
 flake8
-openai
-llama_index
 langchain-core
 langchain
 langchain-community
@@ -10,24 +8,17 @@ llama-cpp-python
 huggingface-hub
 transformers
 pydantic
-xformers
-wheel
-lxml
 pypdf
 unstructured
-accelerate
 streamlit
 streamlit-chat 
 sentence_transformers
 chromadb
-faiss-cpu
-azure-identity
-azure-search-documents
-einops
-ninja
+# accelerate
+# xformers
+# faiss-cpu
+# azure-identity
+# azure-search-documents
+# einops
+# ninja
 
-# PyTorch dependencies
---extra-index-url https://download.pytorch.org/whl/cu118
-torch==2.4.1
-torchvision==0.19.1
-torchaudio==2.4.1

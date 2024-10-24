@@ -208,17 +208,17 @@ class HuggingFaceChatBotChroma:
     def ingest_documents(self):
         offline = True
         if self.load_data:
-            Ingestion(offline=offline)
+            Ingestion(offline=offline, embedding_model=STELLA_EN_1_5B_V5)
         else:
             if os.path.exists(persist_directory):
                 if os.listdir(persist_directory):
                     self.logger.info(f"Ingestion skipped!")
                 else:
                     self.logger.info("PERSIST_DIRECTORY is empty.")
-                    Ingestion(offline=offline)
+                    Ingestion(offline=offline, embedding_model=STELLA_EN_1_5B_V5)
             else:
                 self.logger.info("PERSIST_DIRECTORY does not exist.")
-                Ingestion(offline=offline)
+                Ingestion(offline=offline, embedding_model=STELLA_EN_1_5B_V5)
 
     def user_input(self, prompt: str = None):
         # receive input from user
