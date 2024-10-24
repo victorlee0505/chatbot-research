@@ -12,7 +12,7 @@
 # from langchain.chains import LLMChain, create_tagging_chain, create_tagging_chain_pydantic
 # from langchain.chat_models import ChatOpenAI
 # from langchain.prompts import ChatPromptTemplate
-# from langchain_community.vectorstores.chroma import Chroma
+# from langchain_chroma import Chroma
 # from chatbot_research.form_model.personal_details import PersonalDetails
 
 # from chatbot_research.ingestion.ingest_constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE

@@ -13,12 +13,12 @@
 # from langchain.chains import ConversationalRetrievalChain, RetrievalQA
 # from langchain.chains.history_aware_retriever import create_history_aware_retriever
 # from langchain.chains.retrieval import create_retrieval_chain
-# from langchain_community.embeddings import HuggingFaceEmbeddings
+# from langchain_huggingface import HuggingFaceEmbeddings
 # from langchain_community.llms.huggingface_pipeline import HuggingFacePipeline
 # from langchain.memory import ConversationSummaryBufferMemory
 # from langchain.retrievers import ParentDocumentRetriever
 # from langchain.text_splitter import RecursiveCharacterTextSplitter
-# from langchain_community.vectorstores.chroma import Chroma
+# from langchain_chroma import Chroma
 # from transformers import (
 #     AutoModelForCausalLM,
 #     AutoTokenizer,

@@ -14,7 +14,7 @@
 # from langchain_community.embeddings import OpenAIEmbeddings
 # from langchain.llms.openai import AzureOpenAI
 # from langchain.memory import ConversationSummaryBufferMemory
-# from langchain_community.vectorstores.chroma import Chroma
+# from langchain_chroma import Chroma
 
 # from chatbot_research.ingestion.ingest_constants import CHROMA_SETTINGS_AZURE, PERSIST_DIRECTORY_AZURE
 # from chatbot_research.ingestion.ingest import Ingestion

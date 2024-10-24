@@ -1,17 +1,19 @@
-from dotenv import load_dotenv
 import glob
 import logging
 import os
 import sys
 from multiprocessing import Pool
 from typing import List
-import chromadb
 
+import chromadb
 import openai
 import pandas as pd
 import torch
 from chromadb.config import Settings
+from dotenv import load_dotenv
 from langchain.docstore.document import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_chroma import Chroma
 from langchain_community.document_loaders import (
     CSVLoader,
     DataFrameLoader,
@@ -20,25 +22,25 @@ from langchain_community.document_loaders import (
     TextLoader,
     UnstructuredEmailLoader,
     UnstructuredEPubLoader,
+    UnstructuredFileLoader,
     UnstructuredHTMLLoader,
     UnstructuredMarkdownLoader,
     UnstructuredODTLoader,
     UnstructuredPowerPointLoader,
     UnstructuredWordDocumentLoader,
-    UnstructuredFileLoader,
 )
-from langchain_community.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores.chroma import Chroma
+from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from tqdm import tqdm
 
 from chatbot_research.ingestion import ingest_code_text_splitter
 from chatbot_research.ingestion.ingest_constants import (
+    ALL_MINILM_L6_V2,
     CHROMA_SETTINGS_AZURE,
     CHROMA_SETTINGS_HF,
     PERSIST_DIRECTORY_AZURE,
     PERSIST_DIRECTORY_HF,
-    ALL_MINILM_L6_V2,
+    STELLA_EN_1_5B_V5,
 )
 from chatbot_research.utils.git_repo_utils import EXTENSIONS, GitRepoUtils
 
@@ -55,6 +57,7 @@ chroma_setting_hf = CHROMA_SETTINGS_HF
 source_directory = "./source_documents"
 chunk_size = 1000
 chunk_overlap = 20
+
 
 # Custom document loaders
 class MyElmLoader(UnstructuredEmailLoader):
@@ -234,9 +237,7 @@ class Ingestion:
                 ):
                     results.extend(docs)
                     pbar.update()
-        print(
-            f"Split into {len(results)} chunks of text (max. {chunk_size} char each)"
-        )
+        print(f"Split into {len(results)} chunks of text (max. {chunk_size} char each)")
         return results
 
     def process_documents(self, ignored_files: List[str] = []) -> List[Document]:
@@ -287,20 +288,31 @@ class Ingestion:
             if not self.gpu:
                 print("Disable CUDA")
                 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-                torch.device('cpu')
+                torch.device("cpu")
             if self.embedding_model is None:
                 embeddings = HuggingFaceEmbeddings()
             else:
-                embeddings = HuggingFaceEmbeddings(model_name=self.embedding_model)
-            self.chroma_setting = CHROMA_SETTINGS_HF if self.chroma_setting is None else self.chroma_setting
-            self.persist_directory = persist_directory_hf if self.persist_directory is None else self.persist_directory
+                embeddings = HuggingFaceEmbeddings(
+                    model_name=self.embedding_model,
+                    model_kwargs={"trust_remote_code": True},
+                )
+            self.chroma_setting = (
+                CHROMA_SETTINGS_HF
+                if self.chroma_setting is None
+                else self.chroma_setting
+            )
+            self.persist_directory = (
+                persist_directory_hf
+                if self.persist_directory is None
+                else self.persist_directory
+            )
         else:
             if not self.openai:
                 openai.api_type = "azure"
                 openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")
                 openai.api_base = os.getenv("AZURE_OPENAI_BASE_URL")
                 openai.api_version = os.getenv("AZURE_OPENAI_API_VERSION")
-                
+
                 embeddings = OpenAIEmbeddings(
                     model="text-embedding-ada-002",
                     deployment="text-embedding-ada-002",
@@ -319,8 +331,10 @@ class Ingestion:
                 )
             self.chroma_setting = CHROMA_SETTINGS_AZURE
             self.persist_directory = persist_directory_azure
-        
-        client = chromadb.PersistentClient(settings=self.chroma_setting, path=self.persist_directory)
+
+        client = chromadb.PersistentClient(
+            settings=self.chroma_setting, path=self.persist_directory
+        )
         if self.does_vectorstore_exist(self.persist_directory):
             # Update and store locally vectorstore
             print(
@@ -382,25 +396,3 @@ class Ingestion:
                 )
         db = None
         print(f"Code: Ingestion complete!")
-
-
-if __name__ == "__main__":
-
-    # overiding default source path
-    # base_path = "C:\\path\\to\\your\\data"
-    # base_path = "C:\\Users\\LeeVic\\workspace\\openai\\chatbot-research\\temp"
-
-    # Offline
-    # ingest = Ingestion(offline=True, source_path=base_path)
-    ingest = Ingestion(offline=True, gpu=True)
-
-    # sentence-transformers/all-MiniLM-L6-v2
-    # ingest = Ingestion(offline=True, gpu=True, embedding_model=ALL_MINILM_L6_V2)
-
-    # Azure Open AI
-    # ingest = Ingestion(offline=False)
-    # ingest = Ingestion(offline=False, source_path=base_path)
-
-    # OpenAI
-    # ingest = Ingestion(offline=False, openai=True)
-

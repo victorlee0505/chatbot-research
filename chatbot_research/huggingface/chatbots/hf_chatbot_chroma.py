@@ -7,21 +7,18 @@ import chromadb
 import numpy as np
 import torch
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores.chroma import Chroma
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 from transformers import StoppingCriteria
 
-from chatbot_research.huggingface.config.hf_llm_config import (
-    OPENORCA_MISTRAL_7B_Q5,
-    OPENORCA_MISTRAL_8K_7B,
-    LLMConfig,
-)
+from chatbot_research.huggingface.config.hf_llm_config import LLMConfig
 from chatbot_research.huggingface.inference.hf_llama_cpp import HFllamaCpp
 from chatbot_research.huggingface.inference.hf_transformer import HFTransformer
 from chatbot_research.ingestion.ingest import Ingestion
 from chatbot_research.ingestion.ingest_constants import (
     CHROMA_SETTINGS_HF,
     PERSIST_DIRECTORY_HF,
+    STELLA_EN_1_5B_V5,
 )
 
 persist_directory = PERSIST_DIRECTORY_HF
@@ -150,10 +147,18 @@ class HuggingFaceChatBotChroma:
         self.ingest_documents()
 
         if self.gpu:
-            self.embedding_llm = HuggingFaceEmbeddings()
+            self.embedding_llm = HuggingFaceEmbeddings(model_name=STELLA_EN_1_5B_V5)
         else:
-            model_kwargs = {"device": "cpu"}
-            self.embedding_llm = HuggingFaceEmbeddings(model_kwargs=model_kwargs)
+            model_kwargs = {
+                "trust_remote_code": True,
+                "config_kwargs": {
+                    "use_memory_efficient_attention": False,
+                    "unpad_inputs": False,
+                },
+            }
+            self.embedding_llm = HuggingFaceEmbeddings(
+                model_name=STELLA_EN_1_5B_V5, model_kwargs=model_kwargs
+            )
 
         client = chromadb.PersistentClient(
             settings=CHROMA_SETTINGS_HF, path=persist_directory
@@ -301,50 +306,3 @@ class HuggingFaceChatBotChroma:
     # in case there is no response from model
     def random_response(self):
         return "I don't know", "I am not sure"
-
-
-if __name__ == "__main__":
-    # get config
-    # build a ChatBot object
-    # bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_3B, disable_mem=True)
-    # bot = HuggingFaceChatBotChroma(llm_config=REDPAJAMA_7B, disable_mem=True)
-    # bot = HuggingFaceChatBotChroma(llm_config=VICUNA_7B, disable_mem=True)
-
-    bot = HuggingFaceChatBotChroma(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
-    # bot = HuggingFaceChatBotChroma(llm_config=OPENORCA_MISTRAL_7B_Q5, disable_mem=True, gpu=True, gpu_layers=10)
-
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B)
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_7B)
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_LONGCHAT_1_5_32K_7B)
-
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B, disable_mem=True)
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_7B, disable_mem=True)
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_LONGCHAT_1_5_32K_7B, disable_mem=True)
-
-    # GGUF Quantantized LLM, use less RAM
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_7B_Q8, disable_mem=True, gpu_layers=10) # mem = 10GB
-
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 18GB
-    # bot = HuggingFaceChatBotChroma(llm_config=LMSYS_VICUNA_1_5_16K_13B_Q6, disable_mem=True, gpu_layers=0) # mem = 18GB
-
-    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDCODER_3B, disable_mem=True)
-    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDCODER_15B_Q8, disable_mem=True, gpu_layers=10) # mem = 23GB
-    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDCODER_PY_7B, disable_mem=True, gpu_layers=10)
-    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDCODER_PY_7B_Q6, disable_mem=True, gpu_layers=10) # mem = 9GB
-    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDCODER_PY_13B_Q6, disable_mem=True, gpu_layers=10) # mem = 14GB
-    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDCODER_PY_34B_Q5, disable_mem=True, gpu_layers=10) # mem = 27GB
-
-    # This one is not good at all
-    # bot = HuggingFaceChatBotChroma(llm_config=WIZARDLM_FALCON_40B_Q6K, disable_mem=True, gpu_layers=10) # mem = 45GB
-
-    # start chatting
-    while True:
-        # receive user input
-        bot.user_input()
-        # check whether to end chat
-        if bot.end_chat:
-            break
-        # output bot response
-        bot.bot_response()
-    # Happy Chatting!

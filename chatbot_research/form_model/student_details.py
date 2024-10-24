@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+
 class StudentDetails(BaseModel):
     student_id: str = Field(
         default="",
@@ -25,8 +26,8 @@ class StudentDetails(BaseModel):
         default="",
         description="The address where the student lives.",
     )
-    graduation_year: int = Field(
-        default=0,
+    graduation_year: str = Field(
+        default="",
         description="The year the student is expected to graduate.",
     )
     major: str = Field(
@@ -37,8 +38,8 @@ class StudentDetails(BaseModel):
         default="",
         description="The name of the university where the student is enrolled.",
     )
-    gpa: float = Field(
-        default=0.0,
+    gpa: str = Field(
+        default="",
         description="The GPA (Grade Point Average) of the student.",
     )
     skills: str = Field(

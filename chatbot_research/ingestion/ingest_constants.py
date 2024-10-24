@@ -26,3 +26,4 @@ CHROMA_SETTINGS_PARENT_HF = Settings(
 )
 
 ALL_MINILM_L6_V2 = 'sentence-transformers/all-MiniLM-L6-v2'
+STELLA_EN_1_5B_V5 = 'dunzhang/stella_en_1.5B_v5'

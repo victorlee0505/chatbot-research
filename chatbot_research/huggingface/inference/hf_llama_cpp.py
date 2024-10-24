@@ -58,7 +58,8 @@ class HFllamaCpp(HFInferenceInterface):
 
     def initialize_chain(self):  # -> RunnableSerializable[Dict, str] | Any:
         self.logger.info("Initializing Model ...")
-        self.llm_pipeline = self.create_pipeline()
+        if self.llm_pipeline is None:
+            self.llm_pipeline = self.create_pipeline()
 
         if self.disable_mem:
             self.qa = self.llm_config.prompt_no_mem_template | self.llm_pipeline
@@ -77,7 +78,8 @@ class HFllamaCpp(HFInferenceInterface):
 
     def initialize_retrival_chain(self, vectorstore: VectorStore):
         self.logger.info("Initializing Model ...")
-        self.llm_pipeline = self.create_pipeline()
+        if self.llm_pipeline is None:
+            self.llm_pipeline = self.create_pipeline()
 
         retriever = vectorstore.as_retriever(
             search_type="similarity",

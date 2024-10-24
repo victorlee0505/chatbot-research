@@ -4,6 +4,8 @@ llama_index
 langchain-core
 langchain
 langchain-community
+langchain-chroma
+langchain-huggingface
 llama-cpp-python
 huggingface-hub
 transformers
