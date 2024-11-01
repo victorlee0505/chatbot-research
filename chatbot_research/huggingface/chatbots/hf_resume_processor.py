@@ -115,15 +115,11 @@ class HuggingFaceChatbotResumeProcessor:
             fh.setLevel(logging.INFO)
             self.logger.addHandler(fh)
 
-        # greet while starting
-        # self.welcome()
-
     def create_vectorstore(self, path):
         client = chromadb.PersistentClient(settings=CHROMA_SETTINGS_HF, path=path)
         vectorstore = Chroma(
             client=client,
             embedding_function=self.embedding_llm,
-            # search_kwargs={"k": self.llm_config.target_source_chunks},
         )
 
         return vectorstore
@@ -139,7 +135,6 @@ class HuggingFaceChatbotResumeProcessor:
             )
         else:
             model_kwargs = {"trust_remote_code": True}
-            # model_kwargs = {'trust_remote_code':True, 'config_kwargs': {"use_memory_efficient_attention": False, "unpad_inputs": False}}
             self.embedding_llm = HuggingFaceEmbeddings(
                 model_kwargs=model_kwargs, model_name=STELLA_EN_1_5B_V5
             )
@@ -167,11 +162,29 @@ class HuggingFaceChatbotResumeProcessor:
 
         self.logger.info(f"descriptions: {descriptions}")
 
-        # text = self.ask_for_prompt(ask_for=self.dict_schema.keys())
-
         text = self.ask_for_prompt(descriptions=descriptions, ask_for=None)
 
         self.logger.info(f"ask_for: {text}")
+
+        # EXTRACTION_PROMPT_TEMPLATE = """
+        #     <|im_start|>system
+        #     You are expert on extract information into JSON. Here's the json schema you must adhere to:\n<schema>\n{{schema}}\n</schema> \
+        #     <|im_end|>
+        #     <|im_start|>user
+        #     Extracts the relevant information from the passage. If you do not know the value of an attribute then return empty string for the attribute's value. \
+        #     ### Passage: {context}
+        #     Question: {question}
+        #     <|im_end|>
+        #     <|im_start|>assistant 
+        #     """
+
+        # EXTRACTION_PROMPT_TEMPLATE = EXTRACTION_PROMPT_TEMPLATE.replace(
+        #     "{schema}", json.dumps(self.pydantic_model_object.model_dump(mode='json'))
+        #     )
+        
+        # self.logger.info(f"EXTRACTION_PROMPT_TEMPLATE: {EXTRACTION_PROMPT_TEMPLATE}")
+
+        # EXTRACTION_PROMPT = ChatPromptTemplate.from_template(template=EXTRACTION_PROMPT_TEMPLATE)
 
         EXTRACTION_PROMPT = ChatPromptTemplate.from_template(
             """
@@ -187,7 +200,6 @@ class HuggingFaceChatbotResumeProcessor:
             """
         )
 
-        # self.inputs = text
         self.llm = self.inference.initialize_chat_llm(temperature=0)
 
         retriever = vectorstore.as_retriever(
@@ -213,15 +225,17 @@ class HuggingFaceChatbotResumeProcessor:
             pydantic_object, ask_for = self.filter_response(
                 text_input=text, pydantic_object=self.pydantic_model_object
             )
-            self.pydantic_model_object = pydantic_object
-            self.logger.info(f"ask_for: {ask_for}")
             text = self.ask_for_prompt(descriptions=descriptions, ask_for=ask_for)
             self.logger.info(f"ask_for_prompt: {text}")
-            retry += 1
-            if retry > 3:
-                break
+            if self.pydantic_model_object == pydantic_object:
+                retry += 1
+                if retry > 3:
+                    break
+            self.pydantic_model_object = pydantic_object
+            self.logger.info(f"latest pydantic object: {self.pydantic_model_object}")
 
         self.logger.info("done processing resume")
+        self.logger.info(f"finaly pydantic object: {self.pydantic_model_object}")
         return self.pydantic_model_object
 
     def ask_for_prompt(self, descriptions: dict = None, ask_for: list = None):
@@ -229,29 +243,23 @@ class HuggingFaceChatbotResumeProcessor:
         if ask_for is not None:
             # pick description from descriptions using ask_for keys
             prompt = [descriptions[key] for key in ask_for]
-            key_string = random.choice(prompt)
+            k_size = 3 if len(prompt) > 3 else len(prompt)
+            key_string = random.sample(prompt, k=k_size)
+            key_string = "\n".join(key_string)
         else:
             # all descriptions
             prompt = list(descriptions.values())
-            key_string = "\n".join(prompt)
-
-        # key_string = ' ,\n'.join(prompt)
-        # key_string = random.choice(prompt)
-
-        # result =  f"""
-        #     Please get the following information from a student's resume: \
-        #     {key_string}
-        # """
+            k_size = 3 if len(prompt) > 3 else len(prompt)
+            key_string = random.sample(prompt, k=k_size)
+            key_string = "\n".join(key_string)
 
         result = f"{key_string}"
-
-        self.logger.info(f"ask_for: {result}")
         return result
 
     def filter_response(self, text_input, pydantic_object: BaseModel):
 
         result = self.rag_chain.invoke(text_input)
-        self.logger.info(f"new result : {result}")
+        self.logger.info(f"rag chain result : {result}")
         # add filtered info to the
         pydantic_object = self.add_non_empty_details(pydantic_object, result)
         ask_for = self.check_what_is_empty(pydantic_object)
@@ -306,7 +314,6 @@ class HuggingFaceChatbotResumeProcessor:
     def ingest_documents(self):
         offline = True
         if self.load_data:
-            # Ingestion(offline=offline)
             Ingestion(offline=offline, embedding_model=STELLA_EN_1_5B_V5)
         else:
             if os.path.exists(persist_directory):
@@ -314,11 +321,9 @@ class HuggingFaceChatbotResumeProcessor:
                     self.logger.info(f"Ingestion skipped!")
                 else:
                     self.logger.info("PERSIST_DIRECTORY is empty.")
-                    # Ingestion(offline=offline)
                     Ingestion(offline=offline, embedding_model=STELLA_EN_1_5B_V5)
             else:
                 self.logger.info("PERSIST_DIRECTORY does not exist.")
-                # Ingestion(offline=offline)
                 Ingestion(offline=offline, embedding_model=STELLA_EN_1_5B_V5)
 
     def get_subfolders(self, path):

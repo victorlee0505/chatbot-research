@@ -29,7 +29,7 @@ class LLMConfig:
         top_k: int = 50,
         do_sample: bool = True,  # False: This generally results in more coherent but less diverse output
         retriever_max_tokens_limit: int = 2000,
-        target_source_chunks: int = 20,
+        target_source_chunks: int = 9,
     ):
         self.model = model
         self.model_file = model_file
@@ -98,7 +98,7 @@ HERMES_2_PRO_LLAMA_3_8B_Q8 = LLMConfig(
     prompt_no_mem_template=MistralOpenorcaPrompt.NO_MEMORY_PROMPT,
     prompt_qa_template=MistralOpenorcaPrompt.QA_PROMPT,
     model_max_length=8192,
-    max_new_tokens=2048,
+    max_new_tokens=4096,
     max_mem_tokens=600,
     stop_words=["<|im_end|>", "[/INST]"],
 )

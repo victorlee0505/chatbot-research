@@ -1,4 +1,5 @@
 flake8
+openai
 langchain-core
 langchain
 langchain-community

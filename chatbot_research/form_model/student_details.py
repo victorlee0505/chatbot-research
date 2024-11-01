@@ -6,13 +6,9 @@ class StudentDetails(BaseModel):
         default="",
         description="The unique ID of the student.",
     )
-    first_name: str = Field(
+    full_name: str = Field(
         default="",
-        description="The first name of the student.",
-    )
-    last_name: str = Field(
-        default="",
-        description="The last name or surname of the student.",
+        description="Last Name, first name of the student.",
     )
     email: str = Field(
         default="",
@@ -49,10 +45,6 @@ class StudentDetails(BaseModel):
     experience: str = Field(
         default="",
         description="Relevant work experience of the student.",
-    )
-    education: str = Field(
-        default="",
-        description="Educational qualifications of the student.",
     )
     projects: str = Field(
         default="",
