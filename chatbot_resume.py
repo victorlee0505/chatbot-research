@@ -15,7 +15,7 @@ def main():
         disable_mem=True,
     )
 
-    students_detail = []
+    students_details = []
 
     folder_path = "./resume_input"
     staging_path = "./staging"
@@ -26,9 +26,9 @@ def main():
     for storage_path in storages_path:
         vectorstore = bot.create_vectorstore(storage_path)
         student_detail = bot.process_resume(vectorstore=vectorstore)
-        students_detail.append(student_detail)
+        students_details.append(student_detail)
 
-    print(students_detail)
+    print(students_details)
 
 
 if __name__ == "__main__":
