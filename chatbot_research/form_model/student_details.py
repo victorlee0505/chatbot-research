@@ -4,53 +4,49 @@ from pydantic import BaseModel, Field
 class StudentDetails(BaseModel):
     student_id: str = Field(
         default="",
-        description="The unique ID of the student.",
+        description="The unique identifier of the student."
     )
     full_name: str = Field(
         default="",
-        description="Last Name, first name of the student.",
+        description="Full name of the student in 'Last Name, First Name' format."
     )
     email: str = Field(
         default="",
-        description="An email address associated with the student.",
-    )
-    phone_number: str = Field(
-        default="",
-        description="The phone number of the student.",
+        description="The primary email address of the student."
     )
     address: str = Field(
         default="",
         description="The address where the student lives.",
     )
-    graduation_year: str = Field(
-        default="",
-        description="The year the student is expected to graduate.",
-    )
-    major: str = Field(
-        default="",
-        description="The major or field of study of the student.",
-    )
     university: str = Field(
         default="",
-        description="The name of the university where the student is enrolled.",
+        description="The name of the university the student is attending."
+    )
+    program: str = Field(
+        default="",
+        description="The program or major the student is enrolled in (e.g., Computer Science, Information Technology)."
     )
     gpa: str = Field(
-        default="",
-        description="The GPA (Grade Point Average) of the student.",
+        default=0.0,
+        description="The student's current GPA, used to assess academic standing."
     )
-    skills: str = Field(
-        default="",
-        description="Skills and abilities possessed by the student.",
+    technical_skills: str = Field(
+        default=[],
+        description="A list of technical skills or programming languages the student is proficient in (e.g., Python, Java, SQL)."
     )
-    experience: str = Field(
-        default="",
-        description="Relevant work experience of the student.",
+    work_experience: str = Field(
+        default=[],
+        description="A summary of any previous work experience or internships, if any."
     )
     projects: str = Field(
-        default="",
-        description="Projects or assignments completed by the student.",
+        default=[],
+        description="A brief description of projects the student has worked on that showcase their skills and initiative."
     )
-    summary: str = Field(
+    achievements: str = Field(
+        default=[],
+        description="Any notable achievements or awards the student has received."
+    )
+    portfolio_link: str = Field(
         default="",
-        description="A brief summary or description of the student.",
+        description="A link to the student's portfolio or GitHub, if available."
     )
