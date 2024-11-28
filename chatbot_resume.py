@@ -5,7 +5,7 @@ from chatbot_research.form_model.student_details import StudentDetails
 from chatbot_research.huggingface.chatbots.hf_resume_processor_faiss import (
     HuggingFaceChatbotResumeProcessorFaiss,
 )
-from chatbot_research.huggingface.config.hf_llm_config import HERMES_2_PRO_LLAMA_3_8B_Q8
+from chatbot_research.huggingface.config.hf_llm_config import HERMES_3_LLAMA_3_1_8B_Q8
 
 
 def main():
@@ -13,7 +13,7 @@ def main():
     pydantic_model = StudentDetails
 
     bot = HuggingFaceChatbotResumeProcessorFaiss(
-        llm_config=HERMES_2_PRO_LLAMA_3_8B_Q8,
+        llm_config=HERMES_3_LLAMA_3_1_8B_Q8,
         pydantic_model=pydantic_model,
         disable_mem=True,
     )

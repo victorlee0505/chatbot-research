@@ -5,6 +5,7 @@ from chatbot_research.huggingface.config.hf_prompts import (
     NO_MEM_PROMPT,
     QA_PROMPT_DOCUMENT_CHAT,
 )
+from chatbot_research.huggingface.config.llama3_prompt import HermesLlama3Prompt
 from chatbot_research.huggingface.config.mistral_prompt import MistralOpenorcaPrompt
 
 
@@ -88,15 +89,15 @@ OPENORCA_MISTRAL_7B_Q5 = LLMConfig(
     stop_words=["<|im_end|>", "[/INST]"],
 )
 
-HERMES_2_PRO_LLAMA_3_8B_Q8 = LLMConfig(
-    model="NousResearch/Hermes-2-Pro-Llama-3-8B-GGUF",
-    model_file="Hermes-2-Pro-Llama-3-8B-Q8_0.gguf",
+HERMES_3_LLAMA_3_1_8B_Q8 = LLMConfig(
+    model="NousResearch/Hermes-3-Llama-3.1-8B-GGUF",
+    model_file="Hermes-3-Llama-3.1-8B.Q8_0.gguf",
     model_type="llama3",
     ai_prefix="<|im_start|>assistant\n",
     human_prefix="<|im_start|>user\n",
-    prompt_template=MistralOpenorcaPrompt.MEMORY_PROMPT,
-    prompt_no_mem_template=MistralOpenorcaPrompt.NO_MEMORY_PROMPT,
-    prompt_qa_template=MistralOpenorcaPrompt.QA_PROMPT,
+    prompt_template=HermesLlama3Prompt.MEMORY_PROMPT,
+    prompt_no_mem_template=HermesLlama3Prompt.NO_MEMORY_PROMPT,
+    prompt_qa_template=HermesLlama3Prompt.QA_PROMPT,
     model_max_length=8192,
     max_new_tokens=4096,
     max_mem_tokens=600,
