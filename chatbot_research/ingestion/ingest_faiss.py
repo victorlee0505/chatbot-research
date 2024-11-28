@@ -1,19 +1,18 @@
 import glob
+import hashlib
 import logging
 import os
 import sys
 from multiprocessing import Pool
 from typing import List
 
-import chromadb
 import openai
 import pandas as pd
 import torch
-from chromadb.config import Settings
 from dotenv import load_dotenv
 from langchain.docstore.document import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
+from langchain_community.docstore.base import Docstore
 from langchain_community.document_loaders import (
     CSVLoader,
     DataFrameLoader,
@@ -30,14 +29,13 @@ from langchain_community.document_loaders import (
     UnstructuredWordDocumentLoader,
 )
 from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores.faiss import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from tqdm import tqdm
 
 from chatbot_research.ingestion import ingest_code_text_splitter
 from chatbot_research.ingestion.ingest_constants import (
     ALL_MINILM_L6_V2,
-    CHROMA_SETTINGS_AZURE,
-    CHROMA_SETTINGS_HF,
     PERSIST_DIRECTORY_AZURE,
     PERSIST_DIRECTORY_HF,
     STELLA_EN_1_5B_V5,
@@ -52,8 +50,6 @@ logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 # Load environment variables
 persist_directory_azure = PERSIST_DIRECTORY_AZURE
 persist_directory_hf = PERSIST_DIRECTORY_HF
-chroma_setting_azure = CHROMA_SETTINGS_AZURE
-chroma_setting_hf = CHROMA_SETTINGS_HF
 source_directory = "./source_documents"
 chunk_size = 1000
 chunk_overlap = 20
@@ -103,7 +99,7 @@ LOADER_MAPPING = {
 }
 
 
-class Ingestion:
+class IngestionFAISS:
     # initialize
     def __init__(
         self,
@@ -111,7 +107,6 @@ class Ingestion:
         openai: bool = False,
         source_path: str = None,
         source_paths: List[str] = [],
-        chroma_setting: Settings = None,
         persist_directory: str = None,
         gpu: bool = False,
         embedding_model: str = None,
@@ -130,7 +125,6 @@ class Ingestion:
         self.openai = openai
         self.source_path = source_path
         self.source_paths = source_paths
-        self.chroma_setting = chroma_setting
         self.persist_directory = persist_directory
         self.gpu = gpu
         self.embedding_model = embedding_model
@@ -224,7 +218,9 @@ class Ingestion:
             print(f"\nFile failed to load: '{file_path}', File Types: '{ext}'")
             return []
 
-    def process_code(self, ingest_path: str) -> List[Document]:
+    def process_code(
+        self, ingest_path: str, ignored_files: List[str] = []
+    ) -> List[Document]:
         """
         Load Code and split in chunks
         """
@@ -233,20 +229,30 @@ class Ingestion:
         all_files = git_repo_utils.find_all_files()
         print(f"\nTotal files found: {len(all_files)}")
 
+        filtered_files = [
+            file_path for file_path in all_files if file_path not in ignored_files
+        ]
+
         with Pool(processes=os.cpu_count()) as pool:
-            results = []
+            results: List[Document] = []
             with tqdm(
                 total=len(all_files), desc="Loading new documents", ncols=80
             ) as pbar:
                 for i, docs in enumerate(
-                    pool.imap_unordered(self.load_single_code, all_files)
+                    pool.imap_unordered(
+                        func=self.load_single_code, iterable=filtered_files
+                    )
                 ):
                     results.extend(docs)
                     pbar.update()
-        print(f"\nSplit into {len(results)} chunks of text (max. {chunk_size} char each)")
+        print(
+            f"\nSplit into {len(results)} chunks of text (max. {chunk_size} char each)"
+        )
         return results
 
-    def process_documents(self, ingest_path: str, ignored_files: List[str] = []) -> List[Document]:
+    def process_documents(
+        self, ingest_path: str, ignored_files: List[str] = []
+    ) -> List[Document]:
         """
         Load documents and split in chunks
         """
@@ -261,31 +267,30 @@ class Ingestion:
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
-        texts = text_splitter.split_documents(documents)
+        texts: List[Document] = text_splitter.split_documents(documents)
+
         print(f"\nSplit into {len(texts)} chunks of text (max. {chunk_size} char each)")
+
         return texts
 
     def does_vectorstore_exist(self, persist_directory: str) -> bool:
         """
         Checks if vectorstore exists
         """
-        if os.path.exists(os.path.join(persist_directory, "chroma.sqlite3")):
-            return True
-            # if os.path.exists(
-            #     os.path.join(persist_directory, "chroma-collections.parquet")
-            # ) and os.path.exists(
-            #     os.path.join(persist_directory, "chroma-embeddings.parquet")
-            # ):
-            #     list_index_files = glob.glob(
-            #         os.path.join(persist_directory, "index/*.bin")
-            #     )
-            #     list_index_files += glob.glob(
-            #         os.path.join(persist_directory, "index/*.pkl")
-            #     )
-            #     # At least 3 documents are needed in a working vectorstore
-            #     if len(list_index_files) > 3:
-            #         return True
-        return False
+        if os.path.exists(persist_directory):
+            if os.path.exists(
+                os.path.join(persist_directory, "index.faiss")
+            ) and os.path.exists(os.path.join(persist_directory, "index.pkl")):
+                return True
+            else:
+                return False
+        else:
+            return False
+        # return os.path.exists(persist_directory)
+
+    def get_document_id(self, text: str) -> str:
+        """Generate a unique ID for a document based on its content."""
+        return hashlib.md5(text.encode()).hexdigest()
 
     def run_ingest(self):
         print(f"Offline Embedding: {self.offline}")
@@ -303,11 +308,6 @@ class Ingestion:
                     model_name=self.embedding_model,
                     model_kwargs={"trust_remote_code": True},
                 )
-            self.chroma_setting = (
-                CHROMA_SETTINGS_HF
-                if self.chroma_setting is None
-                else self.chroma_setting
-            )
             self.persist_directory = (
                 persist_directory_hf
                 if self.persist_directory is None
@@ -336,81 +336,90 @@ class Ingestion:
                     model="text-embedding-ada-002",
                     openai_api_key=openai.api_key,
                 )
-            self.chroma_setting = CHROMA_SETTINGS_AZURE
             self.persist_directory = persist_directory_azure
 
-        client = chromadb.PersistentClient(
-            settings=self.chroma_setting, path=self.persist_directory
-        )
-        if self.does_vectorstore_exist(self.persist_directory):
+        db = None
+        if self.does_vectorstore_exist(persist_directory=self.persist_directory):
             # Update and store locally vectorstore
             print(
                 f"Documents: Appending to existing vectorstore at {self.persist_directory}"
             )
-            db = Chroma(
-                client=client,
-                embedding_function=embeddings,
+            db: FAISS = FAISS.load_local(
+                embeddings=embeddings,
+                folder_path=self.persist_directory,
+                allow_dangerous_deserialization=True,
             )
-            collection = db.get()
-            print(f"Collection: {collection}")
+
+            ignored_files = set()
+            for doc_id, document in db.docstore._dict.items():
+                ignored_files.add(document.metadata["source"])
+
+            ignored_files = list(ignored_files)
+            print(f"Ignored Files: {ignored_files}")
+
             for ingest_path in self.source_paths:
-                texts = self.process_documents(ingest_path, [metadata["source"] for metadata in collection["metadatas"]])
+                texts: List[Document] = self.process_documents(
+                    ingest_path=ingest_path, ignored_files=ignored_files
+                )
                 print(f"Failed Documents: {self.failed_files}")
                 if texts:
                     print(f"Documents: Creating embeddings. May take some minutes...")
-                    db.add_documents(texts)
+                    db.add_documents(documents=texts)
         else:
             # Create and store locally vectorstore
             print("Documents: Creating new vectorstore")
-            db: Chroma = None
             for ingest_path in self.source_paths:
-                texts = self.process_documents(ingest_path)
+                texts = self.process_documents(ingest_path=ingest_path)
                 print(f"Failed Documents: {self.failed_files}")
                 if texts:
                     print(f"Documents: Creating embeddings. May take some minutes...")
                     if db is None:
-                        db = Chroma.from_documents(
-                            client=client,
-                            documents=texts,
-                            embedding=embeddings,
-                        )
+                        db = FAISS.from_documents(documents=texts, embedding=embeddings)
                     else:
-                        db.add_documents(texts)
-        db = None
+                        db.add_documents(documents=texts)
+        if db is not None:
+            FAISS.save_local(self=db, folder_path=self.persist_directory)
         print(f"Documents: Ingestion complete!")
 
-        if self.does_vectorstore_exist(self.persist_directory):
+        if self.does_vectorstore_exist(persist_directory=self.persist_directory):
             # Update and store locally vectorstore
             print(
                 f"Code: Appending to existing vectorstore at {self.persist_directory}"
             )
-            db = Chroma(
-                client=client,
-                embedding_function=embeddings,
+            db = FAISS.load_local(
+                embeddings=embeddings,
+                folder_path=self.persist_directory,
+                allow_dangerous_deserialization=True,
             )
-            collection = db.get()
+
+            ignored_files = set()
+            for doc_id, document in db.docstore._dict.items():
+                ignored_files.add(document.metadata["source"])
+
+            ignored_files = list(ignored_files)
+
             for ingest_path in self.source_paths:
-                texts = self.process_code(ingest_path)
+                texts = self.process_code(
+                    ingest_path=ingest_path, ignored_files=ignored_files
+                )
                 print(f"Failed Documents: {self.failed_files}")
                 if texts:
                     print(f"Documents: Creating embeddings. May take some minutes...")
-                    db.add_documents(texts)
+                    db.add_documents(documents=texts)
         else:
             # Create and store locally vectorstore
             print("Code: Creating new vectorstore")
-            db: Chroma = None
+            db: FAISS = None
             for ingest_path in self.source_paths:
-                texts = self.process_code(ingest_path)
+                texts = self.process_code(ingest_path=ingest_path)
                 print(f"Failed Documents: {self.failed_files}")
                 if texts:
                     print(f"Documents: Creating embeddings. May take some minutes...")
                     if db is None:
-                        db = Chroma.from_documents(
-                            client=client,
-                            documents=texts,
-                            embedding=embeddings,
-                        )
+                        db = FAISS.from_documents(documents=texts, embedding=embeddings)
                     else:
-                        db.add_documents(texts)
-        db = None
+                        db.add_documents(documents=texts)
+        if db is not None:
+            FAISS.save_local(self=db, folder_path=self.persist_directory)
         print(f"Code: Ingestion complete!")
+        return db
