@@ -34,7 +34,7 @@ class MistralOpenorcaPrompt:
     Use ONLY the context provided to answer the question at the end.
     If the context is not relevant, DO NOT try to use your own knowledge and simply say you don't know.
 
-    {context}
+    ### context: {context}
     <|im_end|>
     {placeholder}
     """

@@ -423,3 +423,64 @@ class IngestionFAISS:
             FAISS.save_local(self=db, folder_path=self.persist_directory)
         print(f"Code: Ingestion complete!")
         return db
+    
+    def load_vectorstore(self) -> FAISS | None:
+        print(f"Offline Embedding: {self.offline}")
+        torch.set_num_threads(os.cpu_count())
+        # Create embeddings
+        if self.offline:
+            if not self.gpu:
+                print("Disable CUDA")
+                os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+                torch.device("cpu")
+            if self.embedding_model is None:
+                embeddings = HuggingFaceEmbeddings()
+            else:
+                embeddings = HuggingFaceEmbeddings(
+                    model_name=self.embedding_model,
+                    model_kwargs={"trust_remote_code": True},
+                )
+            self.persist_directory = (
+                persist_directory_hf
+                if self.persist_directory is None
+                else self.persist_directory
+            )
+        else:
+            if not self.openai:
+                openai.api_type = "azure"
+                openai.api_key = os.getenv("AZURE_OPENAI_API_KEY")
+                openai.api_base = os.getenv("AZURE_OPENAI_BASE_URL")
+                openai.api_version = os.getenv("AZURE_OPENAI_API_VERSION")
+
+                embeddings = OpenAIEmbeddings(
+                    model="text-embedding-ada-002",
+                    deployment="text-embedding-ada-002",
+                    openai_api_key=openai.api_key,
+                    openai_api_base=openai.api_base,
+                    openai_api_type=openai.api_type,
+                    openai_api_version=openai.api_version,
+                    chunk_size=1,
+                )
+            else:
+                print("OpenAI Embedding")
+                openai.api_key = os.getenv("OPENAI_API_KEY")
+                embeddings = OpenAIEmbeddings(
+                    model="text-embedding-ada-002",
+                    openai_api_key=openai.api_key,
+                )
+            self.persist_directory = persist_directory_azure
+
+        db = None
+        if self.does_vectorstore_exist(persist_directory=self.persist_directory):
+            print(
+                f"Loading vectorstore from {self.persist_directory}"
+            )
+            db: FAISS = FAISS.load_local(
+                embeddings=embeddings,
+                folder_path=self.persist_directory,
+                allow_dangerous_deserialization=True,
+            )
+            return db
+        else:
+            print(f"Vectorstore does not exist at {self.persist_directory}")
+            return None
