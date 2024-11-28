@@ -110,6 +110,7 @@ class Ingestion:
         offline: bool = False,
         openai: bool = False,
         source_path: str = None,
+        source_paths: List[str] = [],
         chroma_setting: Settings = None,
         persist_directory: str = None,
         gpu: bool = False,
@@ -128,15 +129,20 @@ class Ingestion:
         self.offline = offline
         self.openai = openai
         self.source_path = source_path
+        self.source_paths = source_paths
         self.chroma_setting = chroma_setting
         self.persist_directory = persist_directory
         self.gpu = gpu
         self.embedding_model = embedding_model
         self.failed_files = []
 
-        if self.source_path is None or len(self.source_path) == 0:
-            self.source_path = source_directory
-        self.main()
+        if self.source_path is not None:
+            self.source_paths.append(self.source_path)
+
+        if self.source_paths is None or len(self.source_paths) == 0:
+            self.source_paths.append(source_directory)
+
+        print(f"Source Paths: {self.source_paths}")
 
     def load_single_document(self, file_path: str) -> List[Document]:
         # print(f'load_single_document: {file_path}')
@@ -145,7 +151,7 @@ class Ingestion:
             loader_class, loader_args = LOADER_MAPPING[ext]
             if ext == ".csv":
                 try:
-                    print(f"Loading csv: '{file_path}'")
+                    print(f"\nLoading csv: '{file_path}'")
                     loader = loader_class(file_path, **loader_args)
                     return loader.load()
                 except:
@@ -161,7 +167,7 @@ class Ingestion:
                 return []
             else:
                 try:
-                    print(f"Loading file: '{file_path}'")
+                    print(f"\nLoading file: '{file_path}'")
                     loader = loader_class(file_path, **loader_args)
                     return loader.load()
                 except Exception as e:
@@ -169,7 +175,7 @@ class Ingestion:
                     print(f"\nFile failed to load: '{file_path}'")
                     self.failed_files.append(file_path)
                     return []
-        raise ValueError(f"Unsupported file extension '{ext}'")
+        raise ValueError(f"\nUnsupported file extension '{ext}'")
 
     def load_documents(
         self, source_dir: str, ignored_files: List[str] = []
@@ -202,7 +208,7 @@ class Ingestion:
         # print(f'load_single_code: {file_path}')
         ext = file_path.rsplit(".", 1)[-1]
         if ext not in EXTENSIONS:
-            print(f"Skipping extension: '{ext}")
+            print(f"\nSkipping extension: '{ext}")
             return []
         try:
             with open(file_path, encoding="utf-8") as f:
@@ -218,14 +224,14 @@ class Ingestion:
             print(f"\nFile failed to load: '{file_path}', File Types: '{ext}'")
             return []
 
-    def process_code(self) -> List[Document]:
+    def process_code(self, ingest_path: str) -> List[Document]:
         """
         Load Code and split in chunks
         """
         # Find all Git repositories within the provided repo_path and its subfolders
-        git_repo_utils = GitRepoUtils(source_path=self.source_path)
+        git_repo_utils = GitRepoUtils(source_path=ingest_path)
         all_files = git_repo_utils.find_all_files()
-        print(f"Total files found: {len(all_files)}")
+        print(f"\nTotal files found: {len(all_files)}")
 
         with Pool(processes=os.cpu_count()) as pool:
             results = []
@@ -237,50 +243,51 @@ class Ingestion:
                 ):
                     results.extend(docs)
                     pbar.update()
-        print(f"Split into {len(results)} chunks of text (max. {chunk_size} char each)")
+        print(f"\nSplit into {len(results)} chunks of text (max. {chunk_size} char each)")
         return results
 
-    def process_documents(self, ignored_files: List[str] = []) -> List[Document]:
+    def process_documents(self, ingest_path: str, ignored_files: List[str] = []) -> List[Document]:
         """
         Load documents and split in chunks
         """
-        print(f"Loading documents from {self.source_path}")
-        documents = self.load_documents(self.source_path, ignored_files)
+        print(f"\nLoading documents from {ingest_path}")
+        documents = self.load_documents(ingest_path, ignored_files)
         if not documents:
-            print("No new documents to load")
+            print("\nNo new documents to load")
             return None
-        print(f"Loaded {len(documents)} new documents from {self.source_path}")
+        print(f"Loaded {len(documents)} new documents from {ingest_path}")
         # if self.offline:
         #     chunk_size = 1000
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
         texts = text_splitter.split_documents(documents)
-        print(f"Split into {len(texts)} chunks of text (max. {chunk_size} char each)")
+        print(f"\nSplit into {len(texts)} chunks of text (max. {chunk_size} char each)")
         return texts
 
     def does_vectorstore_exist(self, persist_directory: str) -> bool:
         """
         Checks if vectorstore exists
         """
-        if os.path.exists(os.path.join(persist_directory, "index")):
-            if os.path.exists(
-                os.path.join(persist_directory, "chroma-collections.parquet")
-            ) and os.path.exists(
-                os.path.join(persist_directory, "chroma-embeddings.parquet")
-            ):
-                list_index_files = glob.glob(
-                    os.path.join(persist_directory, "index/*.bin")
-                )
-                list_index_files += glob.glob(
-                    os.path.join(persist_directory, "index/*.pkl")
-                )
-                # At least 3 documents are needed in a working vectorstore
-                if len(list_index_files) > 3:
-                    return True
+        if os.path.exists(os.path.join(persist_directory, "chroma.sqlite3")):
+            return True
+            # if os.path.exists(
+            #     os.path.join(persist_directory, "chroma-collections.parquet")
+            # ) and os.path.exists(
+            #     os.path.join(persist_directory, "chroma-embeddings.parquet")
+            # ):
+            #     list_index_files = glob.glob(
+            #         os.path.join(persist_directory, "index/*.bin")
+            #     )
+            #     list_index_files += glob.glob(
+            #         os.path.join(persist_directory, "index/*.pkl")
+            #     )
+            #     # At least 3 documents are needed in a working vectorstore
+            #     if len(list_index_files) > 3:
+            #         return True
         return False
 
-    def main(self):
+    def run_ingest(self):
         print(f"Offline Embedding: {self.offline}")
         torch.set_num_threads(os.cpu_count())
         # Create embeddings
@@ -345,27 +352,30 @@ class Ingestion:
                 embedding_function=embeddings,
             )
             collection = db.get()
-            texts = self.process_documents(
-                [metadata["source"] for metadata in collection["metadatas"]]
-            )
-            print(f"Failed Documents: {self.failed_files}")
-            # texts.append(self.process_code())
-            if texts:
-                print(f"Documents: Creating embeddings. May take some minutes...")
-                db.add_documents(texts)
+            print(f"Collection: {collection}")
+            for ingest_path in self.source_paths:
+                texts = self.process_documents(ingest_path, [metadata["source"] for metadata in collection["metadatas"]])
+                print(f"Failed Documents: {self.failed_files}")
+                if texts:
+                    print(f"Documents: Creating embeddings. May take some minutes...")
+                    db.add_documents(texts)
         else:
             # Create and store locally vectorstore
             print("Documents: Creating new vectorstore")
-            texts = self.process_documents()
-            print(f"Failed Documents: {self.failed_files}")
-            # texts.append(self.process_code())
-            if texts:
-                print(f"Documents: Creating embeddings. May take some minutes...")
-                db = Chroma.from_documents(
-                    client=client,
-                    documents=texts,
-                    embedding=embeddings,
-                )
+            db: Chroma = None
+            for ingest_path in self.source_paths:
+                texts = self.process_documents(ingest_path)
+                print(f"Failed Documents: {self.failed_files}")
+                if texts:
+                    print(f"Documents: Creating embeddings. May take some minutes...")
+                    if db is None:
+                        db = Chroma.from_documents(
+                            client=client,
+                            documents=texts,
+                            embedding=embeddings,
+                        )
+                    else:
+                        db.add_documents(texts)
         db = None
         print(f"Documents: Ingestion complete!")
 
@@ -379,20 +389,28 @@ class Ingestion:
                 embedding_function=embeddings,
             )
             collection = db.get()
-            texts = self.process_code()
-            if texts:
-                print(f"Code: Creating embeddings. May take some minutes...")
-                db.add_documents(texts)
+            for ingest_path in self.source_paths:
+                texts = self.process_code(ingest_path)
+                print(f"Failed Documents: {self.failed_files}")
+                if texts:
+                    print(f"Documents: Creating embeddings. May take some minutes...")
+                    db.add_documents(texts)
         else:
             # Create and store locally vectorstore
             print("Code: Creating new vectorstore")
-            texts = self.process_code()
-            if texts:
-                print(f"Code: Creating embeddings. May take some minutes...")
-                db = Chroma.from_documents(
-                    client=client,
-                    documents=texts,
-                    embedding=embeddings,
-                )
+            db: Chroma = None
+            for ingest_path in self.source_paths:
+                texts = self.process_code(ingest_path)
+                print(f"Failed Documents: {self.failed_files}")
+                if texts:
+                    print(f"Documents: Creating embeddings. May take some minutes...")
+                    if db is None:
+                        db = Chroma.from_documents(
+                            client=client,
+                            documents=texts,
+                            embedding=embeddings,
+                        )
+                    else:
+                        db.add_documents(texts)
         db = None
         print(f"Code: Ingestion complete!")
