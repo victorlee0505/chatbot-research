@@ -104,6 +104,24 @@ HERMES_3_LLAMA_3_1_8B_Q8 = LLMConfig(
     stop_words=["<|im_end|>", "[/INST]"],
 )
 
+QWEN_QWQ_32B_GGUF = LLMConfig(
+    model="Qwen/QwQ-32B-GGUF",
+    model_file="qwq-32b-q6_k.gguf",
+    model_type="qwen",
+    ai_prefix="<|im_start|>assistant\n<think>\n",
+    human_prefix="<|im_start|>user\n",
+    prompt_template=HermesLlama3Prompt.MEMORY_PROMPT,
+    prompt_no_mem_template=HermesLlama3Prompt.NO_MEMORY_PROMPT,
+    prompt_qa_template=HermesLlama3Prompt.QA_PROMPT,
+    model_max_length=32768,
+    max_new_tokens=10000,
+    max_mem_tokens=600,
+    temperature=0.6,
+    top_p=0.95,
+    top_k=40,
+    stop_words=["<|im_end|>", "[/INST]"],
+)
+
 # REDPAJAMA_3B = LLMConfig(
 #     model="togethercomputer/RedPajama-INCITE-Chat-3B-v1",
 #     ai_prefix="<bot>:",

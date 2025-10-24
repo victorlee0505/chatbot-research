@@ -1,11 +1,12 @@
+
+from pprint import pprint
 from langchain_community.vectorstores.faiss import FAISS
 from pydantic import BaseModel
 
 from chatbot_research.form_model.student_details import StudentDetails
-from chatbot_research.huggingface.chatbots.hf_resume_processor_faiss import (
-    HuggingFaceChatbotResumeProcessorFaiss,
-)
+from chatbot_research.huggingface.chatbots.hf_resume_processor_faiss import HuggingFaceChatbotResumeProcessorFaiss
 from chatbot_research.huggingface.config.hf_llm_config import HERMES_3_LLAMA_3_1_8B_Q8
+from chatbot_research.ingestion.ingest_constants import STELLA_EN_1_5B_V5
 
 
 def main():
@@ -24,15 +25,22 @@ def main():
     staging_path = "./staging"
 
     bot.copy_pdfs_to_staging(src_folder=folder_path, staging_folder=staging_path)
+
     storages_path = bot.ingest_resumes(staging_path=staging_path)
     bot.create_model()
+
+    # storages_path = bot.ingest_resumes(
+    #     staging_path=staging_path, embedding_model=STELLA_EN_1_5B_V5
+    # )
+    # bot.create_model(embedding_model=STELLA_EN_1_5B_V5)
+
     for storage_path in storages_path:
         vectorstore: FAISS | None = bot.create_vectorstore(storage_path)
         student_detail: BaseModel = bot.process_resume(vectorstore=vectorstore)
         students_details.append(student_detail)
 
     for student_detail in students_details:
-        print(obj=student_detail.model_dump_json())
+        pprint(student_detail.model_dump_json())
 
 
 if __name__ == "__main__":

@@ -177,6 +177,7 @@ class HuggingFaceChatBotBase:
             answer = self.random_response()
             print(f"<bot>: {answer}")
         else:
+            print()  # for newline after completion
             answer = answer.replace("\n<human>:", "").replace("\nHuman:", "")
         # print bot response
         self.chat_history.append((f"<human>: {self.inputs}", f"<bot>: {answer}"))

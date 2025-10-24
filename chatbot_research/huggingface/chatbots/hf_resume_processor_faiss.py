@@ -113,28 +113,38 @@ class HuggingFaceChatbotResumeProcessorFaiss:
             fh.setLevel(logging.INFO)
             self.logger.addHandler(fh)
 
-    def create_vectorstore(self, path) -> FAISS | None:
+    def create_vectorstore(self, path, embedding_model: str = None) -> FAISS | None:
         ingest = IngestionFAISS(
             offline=True,
-            embedding_model=STELLA_EN_1_5B_V5,
+            embedding_model=embedding_model,
             persist_directory=path,
         )
         return ingest.load_vectorstore()
 
-    def create_model(self):
+    def create_model(self, embedding_model: str = None):
         if self.llm_config:
             self.llm_config.validate()
         self.logger.info("Initializing ChatBot ...")
         if self.gpu:
             model_kwargs = {"trust_remote_code": True}
-            self.embedding_llm = HuggingFaceEmbeddings(
-                model_kwargs=model_kwargs, model_name=STELLA_EN_1_5B_V5
-            )
+            if embedding_model:
+                self.embedding_llm = HuggingFaceEmbeddings(
+                    model_kwargs=model_kwargs, model_name=embedding_model
+                )
+            else:
+                self.embedding_llm = HuggingFaceEmbeddings(
+                    model_kwargs=model_kwargs
+                )
         else:
             model_kwargs = {"trust_remote_code": True}
-            self.embedding_llm = HuggingFaceEmbeddings(
-                model_kwargs=model_kwargs, model_name=STELLA_EN_1_5B_V5
-            )
+            if embedding_model:
+                self.embedding_llm = HuggingFaceEmbeddings(
+                    model_kwargs=model_kwargs, model_name=embedding_model
+                )
+            else:
+                self.embedding_llm = HuggingFaceEmbeddings(
+                    model_kwargs=model_kwargs
+                )
 
         self.inference = HFChatllamaCpp(
             logger=self.logger,
@@ -319,7 +329,7 @@ class HuggingFaceChatbotResumeProcessorFaiss:
             if os.path.isdir(os.path.join(path, entry))
         ]
 
-    def ingest_resumes(self, staging_path: list = []):
+    def ingest_resumes(self, staging_path: list = [], embedding_model: str = None):
         if os.path.exists(persist_directory):
             self.logger.info(f"Ingestion skipped!")
             return self.get_subfolders(persist_directory)
@@ -346,8 +356,9 @@ class HuggingFaceChatbotResumeProcessorFaiss:
                     if ingest is None:
                         ingest = IngestionFAISS(
                             offline=offline,
-                            embedding_model=STELLA_EN_1_5B_V5,
+                            embedding_model=embedding_model,
                             persist_directory=persist_dir,
+                            source_path=path,
                         )
                         ingest.run_ingest()
                     else:

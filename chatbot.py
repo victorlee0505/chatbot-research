@@ -7,12 +7,14 @@ from chatbot_research.huggingface.config.hf_llm_config import (
     OPENORCA_MISTRAL_8K_7B,
     OPENORCA_MISTRAL_7B_Q5,
     HERMES_3_LLAMA_3_1_8B_Q8,
+    QWEN_QWQ_32B_GGUF,
 )
 
 def main():
 
-    # bot = HuggingFaceChatBotBase(llm_config=HERMES_3_LLAMA_3_1_8B_Q8, disable_mem=True)
-    bot = HuggingFaceChatBotFaiss(llm_config=HERMES_3_LLAMA_3_1_8B_Q8, disable_mem=True)
+    bot = HuggingFaceChatBotBase(llm_config=HERMES_3_LLAMA_3_1_8B_Q8, disable_mem=True)
+    # bot = HuggingFaceChatBotFaiss(llm_config=HERMES_3_LLAMA_3_1_8B_Q8, disable_mem=True)
+    # bot = HuggingFaceChatBotBase(llm_config=QWEN_QWQ_32B_GGUF, disable_mem=True)
 
     ## old ##
     # bot = HuggingFaceChatBotBase(llm_config=OPENORCA_MISTRAL_8K_7B, disable_mem=True)
